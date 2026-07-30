@@ -40,20 +40,19 @@ export async function configShowCommand() {
 
   // API Keys
   console.log(chalk.bold('API Keys:'));
-  console.log(chalk.gray(`  OpenAI API Key: ${redactValue(config.apiKeys.openai)}`));
-  console.log(chalk.gray(`  ElevenLabs API Key: ${redactValue(config.apiKeys.elevenlabs)}`));
+  console.log(chalk.gray(`  Groq API Key: ${redactValue(config.api?.groq?.apiKey)}`));
+  console.log(chalk.gray(`  ElevenLabs API Key: ${redactValue(config.api?.elevenlabs?.apiKey)}`));
 
   // 3CX Configuration
   console.log(chalk.bold('\n3CX Configuration:'));
-  console.log(chalk.gray(`  SIP Domain: ${config.sip.domain}`));
-  console.log(chalk.gray(`  SIP Registrar: ${config.sip.registrar}`));
+  console.log(chalk.gray(`  SIP Domain: ${config.sip?.domain}`));
+  console.log(chalk.gray(`  SIP Registrar: ${config.sip?.registrar}`));
 
   // Server Configuration
   console.log(chalk.bold('\nServer:'));
-  console.log(chalk.gray(`  External IP: ${config.server.externalIp}`));
-  console.log(chalk.gray(`  Voice App Port: ${config.server.voiceAppPort}`));
-  console.log(chalk.gray(`  Claude API Port: ${config.server.claudeApiPort}`));
-  console.log(chalk.gray(`  Claude API URL: ${config.server.claudeApiUrl}`));
+  console.log(chalk.gray(`  External IP: ${config.server?.externalIp}`));
+  console.log(chalk.gray(`  HTTP Port: ${config.server?.httpPort}`));
+  console.log(chalk.gray(`  Claude API Port: ${config.server?.claudeApiPort}`));
 
   // Devices
   console.log(chalk.bold('\nDevices:'));

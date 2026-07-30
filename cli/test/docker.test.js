@@ -132,7 +132,7 @@ test('docker compose generation', async (t) => {
       ],
       api: {
         elevenlabs: { apiKey: 'elev-key' },
-        openai: { apiKey: 'openai-key' }
+        groq: { apiKey: 'groq-key' }
       },
       secrets: {
         drachtio: 'drachtio-secret',
@@ -176,7 +176,7 @@ test('docker compose generation', async (t) => {
       ],
       api: {
         elevenlabs: { apiKey: 'elev-key' },
-        openai: { apiKey: 'openai-key' }
+        groq: { apiKey: 'groq-key' }
       },
       secrets: {
         drachtio: 'drachtio-secret',
@@ -215,7 +215,7 @@ test('docker compose generation', async (t) => {
       ],
       api: {
         elevenlabs: { apiKey: 'elev-key' },
-        openai: { apiKey: 'openai-key' }
+        groq: { apiKey: 'groq-key' }
       },
       secrets: {
         drachtio: 'drachtio-secret',
@@ -235,6 +235,12 @@ test('docker compose generation', async (t) => {
     // Should NOT use any remote IP
     assert.ok(!envFile.includes('CLAUDE_API_URL=http://192.168.'),
       'Should not use remote IP for both mode');
+
+    // Should emit the Groq (Whisper STT) API key, not OpenAI
+    assert.ok(envFile.includes('GROQ_API_KEY=groq-key'),
+      'Should emit GROQ_API_KEY from config');
+    assert.ok(!envFile.includes('OPENAI_API_KEY='),
+      'Should not emit legacy OPENAI_API_KEY');
   });
 
   await t.test('generates env file with remote API for voice-server mode', () => {
@@ -258,7 +264,7 @@ test('docker compose generation', async (t) => {
       ],
       api: {
         elevenlabs: { apiKey: 'elev-key' },
-        openai: { apiKey: 'openai-key' }
+        groq: { apiKey: 'groq-key' }
       },
       secrets: {
         drachtio: 'drachtio-secret',

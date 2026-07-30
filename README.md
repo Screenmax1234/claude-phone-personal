@@ -19,7 +19,7 @@ Claude Phone gives your Claude Code installation a phone number. You can:
 |-------------|-----------------|-------|
 | **3CX Cloud Account** | [3cx.com](https://www.3cx.com/) | Free tier works |
 | **ElevenLabs API Key** | [elevenlabs.io](https://elevenlabs.io/) | For text-to-speech |
-| **OpenAI API Key** | [platform.openai.com](https://platform.openai.com/) | For Whisper speech-to-text |
+| **Groq API Key** | [console.groq.com/keys](https://console.groq.com/keys) | For Whisper speech-to-text (free tier) |
 | **Claude Code CLI** | [claude.ai/code](https://claude.ai/code) | Requires Claude Max subscription |
 
 ## Platform Support

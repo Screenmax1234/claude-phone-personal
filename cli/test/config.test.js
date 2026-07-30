@@ -63,14 +63,33 @@ test('config module', async (t) => {
       version: '1.0.0',
       api: {
         elevenlabs: { apiKey: 'updated-key', validated: true },
-        openai: { apiKey: 'openai-key', validated: false }
+        groq: { apiKey: 'groq-key', validated: false }
       }
     };
 
     await saveConfig(updated);
     const config = await loadConfig();
     assert.strictEqual(config.api.elevenlabs.apiKey, 'updated-key');
-    assert.strictEqual(config.api.openai.apiKey, 'openai-key');
+    assert.strictEqual(config.api.groq.apiKey, 'groq-key');
+  });
+
+  await t.test('loadConfig migrates legacy openai config to groq', async () => {
+    // Simulate an old config file written before the Groq migration
+    const legacy = {
+      version: '1.0.0',
+      api: {
+        elevenlabs: { apiKey: 'el-key', validated: true },
+        openai: { apiKey: 'legacy-openai-key', validated: true }
+      }
+    };
+
+    await saveConfig(legacy);
+    const config = await loadConfig();
+
+    // groq should now hold the migrated key
+    assert.ok(config.api.groq, 'Should create api.groq from legacy openai config');
+    assert.strictEqual(config.api.groq.apiKey, 'legacy-openai-key');
+    assert.ok(!config.api.openai, 'Should remove legacy api.openai after migration');
   });
 
   await t.test('config with deployment.mode defaults to standard', async () => {

@@ -27,10 +27,10 @@ claude-phone logs     # View recent logs
 | Account suspended | Check account status on provider dashboard |
 | Network issue | Check internet connectivity |
 
-**For OpenAI specifically:**
-- New accounts need billing enabled before API works
-- Free tier credits expire after 3 months
-- Check [platform.openai.com/account/billing](https://platform.openai.com/account/billing)
+**For Groq (Whisper STT):**
+- Free tier has rate limits (requests/min and daily audio hours)
+- Check [console.groq.com](https://console.groq.com) for usage and rate limits
+- Free tier credits/rate limits reset daily
 
 **For ElevenLabs:**
 - Free tier has limited characters/month
@@ -191,7 +191,7 @@ claude-phone start
 
 | Cause | Solution |
 |-------|----------|
-| OpenAI billing exhausted | Add credits to OpenAI account |
+| Groq rate limit hit | Check [console.groq.com](https://console.groq.com) rate limits; wait for reset |
 | Audio quality poor | Check microphone, reduce background noise |
 | Network latency | Audio chunks may be lost; check connection |
 

@@ -40,6 +40,13 @@ export async function loadConfig() {
   const data = await fs.promises.readFile(configPath, 'utf8');
   const config = JSON.parse(data);
 
+  // Migrate legacy openai config to groq (Whisper STT moved from OpenAI to Groq)
+  if (config.api && config.api.openai && !config.api.groq) {
+    config.api.groq = { apiKey: config.api.openai.apiKey, validated: false };
+    delete config.api.openai;
+    console.log('Migrated openai -> groq config (Whisper STT provider changed).');
+  }
+
   // Ensure installationType exists for backward compatibility
   if (!config.installationType) {
     config.installationType = 'both';

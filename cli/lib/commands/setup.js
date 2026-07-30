@@ -12,7 +12,7 @@ import {
 } from '../config.js';
 import {
   validateElevenLabsKey,
-  validateOpenAIKey,
+  validateGroqKey,
   validateVoiceId,
   validateExtension,
   validateIP,
@@ -670,7 +670,7 @@ function createDefaultConfig() {
     version: '1.0.0',
     api: {
       elevenlabs: { apiKey: '', defaultVoiceId: '', validated: false },
-      openai: { apiKey: '', validated: false }
+      groq: { apiKey: '', validated: false }
     },
     sip: {
       domain: '',
@@ -784,13 +784,13 @@ async function setupAPIKeys(config) {
     config.api.elevenlabs.defaultVoiceId = defaultVoiceId;
   }
 
-  // OpenAI API Key
-  const openAIAnswers = await inquirer.prompt([
+  // Groq API Key (for Whisper STT)
+  const groqAnswers = await inquirer.prompt([
     {
       type: 'password',
       name: 'apiKey',
-      message: 'OpenAI API key (for Whisper STT):',
-      default: config.api.openai.apiKey,
+      message: 'Groq API key (for Whisper STT):',
+      default: config.api.groq.apiKey,
       validate: (input) => {
         if (!input || input.trim() === '') {
           return 'API key is required';
@@ -800,12 +800,12 @@ async function setupAPIKeys(config) {
     }
   ]);
 
-  const openAIKey = openAIAnswers.apiKey;
-  const openAISpinner = ora('Validating OpenAI API key...').start();
+  const groqKey = groqAnswers.apiKey;
+  const groqSpinner = ora('Validating Groq API key...').start();
 
-  const openAIResult = await validateOpenAIKey(openAIKey);
-  if (!openAIResult.valid) {
-    openAISpinner.fail(`Invalid OpenAI API key: ${openAIResult.error}`);
+  const groqResult = await validateGroqKey(groqKey);
+  if (!groqResult.valid) {
+    groqSpinner.fail(`Invalid Groq API key: ${groqResult.error}`);
     console.log(chalk.yellow('\n⚠️  You can continue setup, but the key may not work.'));
     const { continueAnyway } = await inquirer.prompt([
       {
@@ -820,10 +820,10 @@ async function setupAPIKeys(config) {
       throw new Error('Setup cancelled due to invalid API key');
     }
 
-    config.api.openai = { apiKey: openAIKey, validated: false };
+    config.api.groq = { apiKey: groqKey, validated: false };
   } else {
-    openAISpinner.succeed('OpenAI API key validated');
-    config.api.openai = { apiKey: openAIKey, validated: true };
+    groqSpinner.succeed('Groq API key validated');
+    config.api.groq = { apiKey: groqKey, validated: true };
   }
 
   return config;
