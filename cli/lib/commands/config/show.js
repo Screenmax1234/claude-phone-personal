@@ -39,9 +39,17 @@ export async function configShowCommand() {
   const config = await loadConfig();
 
   // API Keys
+  const tts = config.api?.tts || {};
+  const ttsProvider = tts.provider || 'elevenlabs';
   console.log(chalk.bold('API Keys:'));
   console.log(chalk.gray(`  Groq API Key: ${redactValue(config.api?.groq?.apiKey)}`));
-  console.log(chalk.gray(`  ElevenLabs API Key: ${redactValue(config.api?.elevenlabs?.apiKey)}`));
+  console.log(chalk.gray(`  TTS Provider: ${ttsProvider}`));
+  if (ttsProvider === 'airforce') {
+    console.log(chalk.gray(`  Airforce API Key: ${redactValue(tts.airforce?.apiKey)}`));
+    console.log(chalk.gray(`  Airforce TTS Model: ${tts.airforce?.model || '(not set)'}`));
+  } else {
+    console.log(chalk.gray(`  ElevenLabs API Key: ${redactValue(tts.elevenlabs?.apiKey)}`));
+  }
 
   // 3CX Configuration
   console.log(chalk.bold('\n3CX Configuration:'));

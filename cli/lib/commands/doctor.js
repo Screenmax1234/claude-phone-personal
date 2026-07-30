@@ -5,7 +5,7 @@ import axios from 'axios';
 import { loadConfig, configExists, getInstallationType } from '../config.js';
 import { checkDocker, getContainerStatus } from '../docker.js';
 import { isServerRunning, getServerPid } from '../process-manager.js';
-import { validateElevenLabsKey, validateGroqKey } from '../validators.js';
+import { validateElevenLabsKey, validateGroqKey, validateAirforceKey } from '../validators.js';
 import { isReachable, checkClaudeApiServer as checkClaudeApiHealth } from '../network.js';
 import { checkPort } from '../port-check.js';
 
@@ -61,6 +61,24 @@ async function checkClaudeCLI() {
 async function checkElevenLabsAPI(apiKey) {
   try {
     const result = await validateElevenLabsKey(apiKey);
+    if (result.valid) {
+      return { connected: true };
+    } else {
+      return { connected: false, error: result.error };
+    }
+  } catch (error) {
+    return { connected: false, error: error.message };
+  }
+}
+
+/**
+ * Check Airforce API connectivity
+ * @param {string} apiKey - Airforce API key
+ * @returns {Promise<{connected: boolean, error?: string}>}
+ */
+async function checkAirforceAPI(apiKey) {
+  try {
+    const result = await validateAirforceKey(apiKey);
     if (result.valid) {
       return { connected: true };
     } else {
@@ -283,18 +301,30 @@ async function runVoiceServerChecks(config, isPiSplit) {
   }
   checks.push({ name: 'Docker', passed: dockerResult.installed && dockerResult.running });
 
-  // Check ElevenLabs API (only if configured)
-  if (config.api && config.api.elevenlabs && config.api.elevenlabs.apiKey) {
-    const elevenLabsSpinner = ora('Checking ElevenLabs API...').start();
-    const elevenLabsResult = await checkElevenLabsAPI(config.api.elevenlabs.apiKey);
-    if (elevenLabsResult.connected) {
-      elevenLabsSpinner.succeed(chalk.green('ElevenLabs API connected'));
+  // Check active TTS provider (only the configured one)
+  const ttsProvider = (config.api && config.api.tts && config.api.tts.provider) || 'elevenlabs';
+  if (ttsProvider === 'airforce' && config.api?.tts?.airforce?.apiKey) {
+    const airforceSpinner = ora('Checking Airforce TTS API...').start();
+    const airforceResult = await checkAirforceAPI(config.api.tts.airforce.apiKey);
+    if (airforceResult.connected) {
+      airforceSpinner.succeed(chalk.green('Airforce TTS API connected'));
       passedCount++;
     } else {
-      elevenLabsSpinner.fail(chalk.red(`ElevenLabs API failed: ${elevenLabsResult.error}`));
+      airforceSpinner.fail(chalk.red(`Airforce TTS API failed: ${airforceResult.error}`));
       console.log(chalk.gray('  → Check your API key in ~/.claude-phone/config.json\n'));
     }
-    checks.push({ name: 'ElevenLabs API', passed: elevenLabsResult.connected });
+    checks.push({ name: 'Airforce TTS API', passed: airforceResult.connected });
+  } else if (config.api?.tts?.elevenlabs?.apiKey) {
+    const elevenLabsSpinner = ora('Checking ElevenLabs TTS API...').start();
+    const elevenLabsResult = await checkElevenLabsAPI(config.api.tts.elevenlabs.apiKey);
+    if (elevenLabsResult.connected) {
+      elevenLabsSpinner.succeed(chalk.green('ElevenLabs TTS API connected'));
+      passedCount++;
+    } else {
+      elevenLabsSpinner.fail(chalk.red(`ElevenLabs TTS API failed: ${elevenLabsResult.error}`));
+      console.log(chalk.gray('  → Check your API key in ~/.claude-phone/config.json\n'));
+    }
+    checks.push({ name: 'ElevenLabs TTS API', passed: elevenLabsResult.connected });
   }
 
   // Check Groq API (only if configured)

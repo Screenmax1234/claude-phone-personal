@@ -34,7 +34,7 @@ test('config module', async (t) => {
     const config = {
       version: '1.0.0',
       api: {
-        elevenlabs: { apiKey: 'test-key-123', validated: true }
+        tts: { provider: 'elevenlabs', elevenlabs: { apiKey: 'test-key-123', validated: true } }
       }
     };
 
@@ -51,7 +51,7 @@ test('config module', async (t) => {
   await t.test('loadConfig reads saved config', async () => {
     const config = await loadConfig();
     assert.strictEqual(config.version, '1.0.0');
-    assert.strictEqual(config.api.elevenlabs.apiKey, 'test-key-123');
+    assert.strictEqual(config.api.tts.elevenlabs.apiKey, 'test-key-123');
   });
 
   await t.test('configExists returns true after save', () => {
@@ -62,15 +62,35 @@ test('config module', async (t) => {
     const updated = {
       version: '1.0.0',
       api: {
-        elevenlabs: { apiKey: 'updated-key', validated: true },
+        tts: { provider: 'elevenlabs', elevenlabs: { apiKey: 'updated-key', validated: true } },
         groq: { apiKey: 'groq-key', validated: false }
       }
     };
 
     await saveConfig(updated);
     const config = await loadConfig();
-    assert.strictEqual(config.api.elevenlabs.apiKey, 'updated-key');
+    assert.strictEqual(config.api.tts.elevenlabs.apiKey, 'updated-key');
     assert.strictEqual(config.api.groq.apiKey, 'groq-key');
+  });
+
+  await t.test('loadConfig migrates legacy flat elevenlabs config to api.tts', async () => {
+    // Simulate an old config file written before dual-provider TTS support
+    const legacy = {
+      version: '1.0.0',
+      api: {
+        elevenlabs: { apiKey: 'legacy-elev-key', defaultVoiceId: 'voice123', validated: true }
+      }
+    };
+
+    await saveConfig(legacy);
+    const config = await loadConfig();
+
+    assert.ok(config.api.tts, 'Should create api.tts from legacy elevenlabs config');
+    assert.strictEqual(config.api.tts.provider, 'elevenlabs');
+    assert.strictEqual(config.api.tts.elevenlabs.apiKey, 'legacy-elev-key');
+    assert.strictEqual(config.api.tts.elevenlabs.defaultVoiceId, 'voice123');
+    assert.ok(config.api.tts.airforce, 'Should scaffold an airforce provider entry');
+    assert.ok(!config.api.elevenlabs, 'Should remove legacy api.elevenlabs after migration');
   });
 
   await t.test('loadConfig migrates legacy openai config to groq', async () => {

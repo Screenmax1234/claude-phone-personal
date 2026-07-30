@@ -13,6 +13,7 @@ import {
 import {
   validateElevenLabsKey,
   validateGroqKey,
+  validateAirforceKey,
   validateVoiceId,
   validateExtension,
   validateIP,
@@ -669,7 +670,11 @@ function createDefaultConfig() {
   return {
     version: '1.0.0',
     api: {
-      elevenlabs: { apiKey: '', defaultVoiceId: '', validated: false },
+      tts: {
+        provider: 'elevenlabs',
+        elevenlabs: { apiKey: '', defaultVoiceId: '', model: 'eleven_turbo_v2', validated: false },
+        airforce: { apiKey: '', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1', defaultVoice: '', validated: false }
+      },
       groq: { apiKey: '', validated: false }
     },
     sip: {
@@ -700,88 +705,179 @@ function createDefaultConfig() {
  * @returns {Promise<object>} Updated config
  */
 async function setupAPIKeys(config) {
-  // ElevenLabs API Key
-  const elevenLabsAnswers = await inquirer.prompt([
-    {
-      type: 'password',
-      name: 'apiKey',
-      message: 'ElevenLabs API key:',
-      default: config.api.elevenlabs.apiKey,
-      validate: (input) => {
-        if (!input || input.trim() === '') {
-          return 'API key is required';
-        }
-        return true;
-      }
-    }
-  ]);
-
-  const elevenLabsKey = elevenLabsAnswers.apiKey;
-  const spinner = ora('Validating ElevenLabs API key...').start();
-
-  const elevenLabsResult = await validateElevenLabsKey(elevenLabsKey);
-  if (!elevenLabsResult.valid) {
-    spinner.fail(`Invalid ElevenLabs API key: ${elevenLabsResult.error}`);
-    console.log(chalk.yellow('\n⚠️  You can continue setup, but the key may not work.'));
-    const { continueAnyway } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'continueAnyway',
-        message: 'Continue anyway?',
-        default: false
-      }
-    ]);
-
-    if (!continueAnyway) {
-      throw new Error('Setup cancelled due to invalid API key');
-    }
-
-    config.api.elevenlabs = { apiKey: elevenLabsKey, defaultVoiceId: '', validated: false };
-  } else {
-    spinner.succeed('ElevenLabs API key validated');
-    config.api.elevenlabs = { apiKey: elevenLabsKey, defaultVoiceId: '', validated: true };
+  // Ensure api.tts structure exists
+  if (!config.api.tts) {
+    config.api.tts = {
+      provider: 'elevenlabs',
+      elevenlabs: { apiKey: '', defaultVoiceId: '', model: 'eleven_turbo_v2', validated: false },
+      airforce: { apiKey: '', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1', defaultVoice: '', validated: false }
+    };
   }
+  const tts = config.api.tts;
 
-  // Ask for default voice ID immediately after API key
-  const voiceIdAnswers = await inquirer.prompt([
+  // === TTS provider selection ===
+  const { ttsProvider } = await inquirer.prompt([
     {
-      type: 'input',
-      name: 'voiceId',
-      message: 'ElevenLabs default voice ID (for all devices):',
-      default: config.api.elevenlabs.defaultVoiceId || '',
-      validate: (input) => {
-        if (!input || input.trim() === '') {
-          return 'Voice ID is required';
-        }
-        return true;
-      }
+      type: 'list',
+      name: 'ttsProvider',
+      message: 'Text-to-Speech provider:',
+      choices: [
+        { name: 'ElevenLabs (native api.elevenlabs.io)', value: 'elevenlabs' },
+        { name: 'Airforce (OpenAI-compatible gateway: eleven-* + gpt-4o-mini-tts models)', value: 'airforce' }
+      ],
+      default: tts.provider || 'elevenlabs'
     }
   ]);
+  tts.provider = ttsProvider;
 
-  const defaultVoiceId = voiceIdAnswers.voiceId;
-  const voiceSpinner = ora('Validating ElevenLabs voice ID...').start();
-
-  const voiceValidation = await validateVoiceId(elevenLabsKey, defaultVoiceId);
-  if (!voiceValidation.valid) {
-    voiceSpinner.fail(`Voice ID validation failed: ${voiceValidation.error}`);
-    console.log(chalk.yellow('\n⚠️  You can continue setup, but the voice ID may not work.'));
-    const { continueAnyway } = await inquirer.prompt([
+  if (ttsProvider === 'elevenlabs') {
+    // === ElevenLabs (native) ===
+    const elevenLabsAnswers = await inquirer.prompt([
       {
-        type: 'confirm',
-        name: 'continueAnyway',
-        message: 'Continue anyway?',
-        default: false
+        type: 'password',
+        name: 'apiKey',
+        message: 'ElevenLabs API key:',
+        default: tts.elevenlabs.apiKey,
+        validate: (input) => {
+          if (!input || input.trim() === '') {
+            return 'API key is required';
+          }
+          return true;
+        }
       }
     ]);
 
-    if (!continueAnyway) {
-      throw new Error('Setup cancelled due to invalid voice ID');
+    const elevenLabsKey = elevenLabsAnswers.apiKey;
+    const spinner = ora('Validating ElevenLabs API key...').start();
+
+    const elevenLabsResult = await validateElevenLabsKey(elevenLabsKey);
+    if (!elevenLabsResult.valid) {
+      spinner.fail(`Invalid ElevenLabs API key: ${elevenLabsResult.error}`);
+      console.log(chalk.yellow('\n⚠️  You can continue setup, but the key may not work.'));
+      const { continueAnyway } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'continueAnyway',
+          message: 'Continue anyway?',
+          default: false
+        }
+      ]);
+
+      if (!continueAnyway) {
+        throw new Error('Setup cancelled due to invalid API key');
+      }
+
+      tts.elevenlabs = { apiKey: elevenLabsKey, defaultVoiceId: tts.elevenlabs.defaultVoiceId || '', model: tts.elevenlabs.model || 'eleven_turbo_v2', validated: false };
+    } else {
+      spinner.succeed('ElevenLabs API key validated');
+      tts.elevenlabs = { apiKey: elevenLabsKey, defaultVoiceId: tts.elevenlabs.defaultVoiceId || '', model: tts.elevenlabs.model || 'eleven_turbo_v2', validated: true };
     }
 
-    config.api.elevenlabs.defaultVoiceId = defaultVoiceId;
+    // Default voice ID
+    const voiceIdAnswers = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'voiceId',
+        message: 'ElevenLabs default voice ID (for all devices):',
+        default: tts.elevenlabs.defaultVoiceId || '',
+        validate: (input) => {
+          if (!input || input.trim() === '') {
+            return 'Voice ID is required';
+          }
+          return true;
+        }
+      }
+    ]);
+
+    const defaultVoiceId = voiceIdAnswers.voiceId;
+    const voiceSpinner = ora('Validating ElevenLabs voice ID...').start();
+
+    const voiceValidation = await validateVoiceId(elevenLabsKey, defaultVoiceId);
+    if (!voiceValidation.valid) {
+      voiceSpinner.fail(`Voice ID validation failed: ${voiceValidation.error}`);
+      console.log(chalk.yellow('\n⚠️  You can continue setup, but the voice ID may not work.'));
+      const { continueAnyway } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'continueAnyway',
+          message: 'Continue anyway?',
+          default: false
+        }
+      ]);
+
+      if (!continueAnyway) {
+        throw new Error('Setup cancelled due to invalid voice ID');
+      }
+
+      tts.elevenlabs.defaultVoiceId = defaultVoiceId;
+    } else {
+      voiceSpinner.succeed(`Voice ID validated: ${voiceValidation.name}`);
+      tts.elevenlabs.defaultVoiceId = defaultVoiceId;
+    }
   } else {
-    voiceSpinner.succeed(`Voice ID validated: ${voiceValidation.name}`);
-    config.api.elevenlabs.defaultVoiceId = defaultVoiceId;
+    // === Airforce (OpenAI-compatible gateway) ===
+    const airforceAnswers = await inquirer.prompt([
+      {
+        type: 'password',
+        name: 'apiKey',
+        message: 'Airforce API key (get one at https://api.airforce/dashboard/#api-keys):',
+        default: tts.airforce.apiKey,
+        validate: (input) => {
+          if (!input || input.trim() === '') {
+            return 'API key is required';
+          }
+          return true;
+        }
+      },
+      {
+        type: 'input',
+        name: 'model',
+        message: 'Airforce TTS model:',
+        default: tts.airforce.model || 'eleven-turbo-v2-5',
+        validate: (input) => {
+          if (!input || input.trim() === '') {
+            return 'Model is required';
+          }
+          return true;
+        }
+      },
+      {
+        type: 'input',
+        name: 'defaultVoice',
+        message: 'Default voice (ElevenLabs voice ID for eleven-* models, or an OpenAI name like "coral" for gpt-4o-mini-tts):',
+        default: tts.airforce.defaultVoice || tts.elevenlabs.defaultVoiceId || '',
+        validate: (input) => {
+          if (!input || input.trim() === '') {
+            return 'Voice is required';
+          }
+          return true;
+        }
+      }
+    ]);
+
+    const airforceSpinner = ora('Validating Airforce API key...').start();
+    const airforceResult = await validateAirforceKey(airforceAnswers.apiKey);
+    if (!airforceResult.valid) {
+      airforceSpinner.fail(`Invalid Airforce API key: ${airforceResult.error}`);
+      console.log(chalk.yellow('\n⚠️  You can continue setup, but the key may not work.'));
+      const { continueAnyway } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'continueAnyway',
+          message: 'Continue anyway?',
+          default: false
+        }
+      ]);
+
+      if (!continueAnyway) {
+        throw new Error('Setup cancelled due to invalid API key');
+      }
+
+      tts.airforce = { apiKey: airforceAnswers.apiKey, model: airforceAnswers.model, baseUrl: tts.airforce.baseUrl || 'https://api.airforce/v1', defaultVoice: airforceAnswers.defaultVoice, validated: false };
+    } else {
+      airforceSpinner.succeed('Airforce API key validated');
+      tts.airforce = { apiKey: airforceAnswers.apiKey, model: airforceAnswers.model, baseUrl: tts.airforce.baseUrl || 'https://api.airforce/v1', defaultVoice: airforceAnswers.defaultVoice, validated: true };
+    }
   }
 
   // Groq API Key (for Whisper STT)
@@ -919,6 +1015,12 @@ async function setupDevice(config) {
   // Get first device or create new
   const existingDevice = config.devices.length > 0 ? config.devices[0] : null;
 
+  // Resolve default voice based on active TTS provider
+  const tts = config.api?.tts || {};
+  const defaultVoice = tts.provider === 'airforce'
+    ? (tts.airforce?.defaultVoice || tts.elevenlabs?.defaultVoiceId || '')
+    : (tts.elevenlabs?.defaultVoiceId || tts.airforce?.defaultVoice || '');
+
   const answers = await inquirer.prompt([
     {
       type: 'input',
@@ -971,8 +1073,10 @@ async function setupDevice(config) {
     {
       type: 'input',
       name: 'voiceId',
-      message: 'ElevenLabs voice ID:',
-      default: existingDevice?.voiceId || config.api.elevenlabs.defaultVoiceId || '',
+      message: tts.provider === 'airforce'
+        ? 'Voice (ElevenLabs ID for eleven-* models, or OpenAI name like "coral"):'
+        : 'ElevenLabs voice ID:',
+      default: existingDevice?.voiceId || defaultVoice,
       validate: (input) => {
         if (!input || input.trim() === '') {
           return 'Voice ID is required';
@@ -994,29 +1098,32 @@ async function setupDevice(config) {
     }
   ]);
 
-  // Validate voice ID with ElevenLabs API
-  const voiceSpinner = ora('Validating ElevenLabs voice ID...').start();
-  const voiceValidation = await validateVoiceId(config.api.elevenlabs.apiKey, answers.voiceId);
+  // Validate voice ID with ElevenLabs API (only for the native ElevenLabs provider;
+  // airforce exposes no reliable per-voice lookup, so we trust the user's input)
+  if (tts.provider === 'elevenlabs' && tts.elevenlabs?.apiKey) {
+    const voiceSpinner = ora('Validating ElevenLabs voice ID...').start();
+    const voiceValidation = await validateVoiceId(tts.elevenlabs.apiKey, answers.voiceId);
 
-  if (!voiceValidation.valid) {
-    voiceSpinner.fail(`Voice ID validation failed: ${voiceValidation.error}`);
-    console.log(chalk.yellow('\n⚠️  You can continue setup, but the voice ID may not work.'));
-    const { continueAnyway } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'continueAnyway',
-        message: 'Continue anyway?',
-        default: false
+    if (!voiceValidation.valid) {
+      voiceSpinner.fail(`Voice ID validation failed: ${voiceValidation.error}`);
+      console.log(chalk.yellow('\n⚠️  You can continue setup, but the voice ID may not work.'));
+      const { continueAnyway } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'continueAnyway',
+          message: 'Continue anyway?',
+          default: false
+        }
+      ]);
+
+      if (!continueAnyway) {
+        // Let user re-enter voice ID
+        console.log(chalk.gray('\nReturning to device setup...'));
+        return setupDevice(config);
       }
-    ]);
-
-    if (!continueAnyway) {
-      // Let user re-enter voice ID
-      console.log(chalk.gray('\nReturning to device setup...'));
-      return setupDevice(config);
+    } else {
+      voiceSpinner.succeed(`Voice ID validated: ${voiceValidation.name}`);
     }
-  } else {
-    voiceSpinner.succeed(`Voice ID validated: ${voiceValidation.name}`);
   }
 
   const device = {

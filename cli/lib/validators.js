@@ -115,6 +115,65 @@ export async function validateGroqKey(apiKey) {
 }
 
 /**
+ * Validate Airforce API key by making a test request
+ * @param {string} apiKey - Airforce API key
+ * @returns {Promise<{valid: boolean, error?: string}>} Validation result
+ */
+export async function validateAirforceKey(apiKey) {
+  if (!apiKey || apiKey.trim() === '') {
+    return {
+      valid: false,
+      error: 'API key cannot be empty'
+    };
+  }
+
+  try {
+    // /v1/audio/voices is auth-gated (returns 401 for invalid keys), unlike
+    // /v1/models which is a public catalog.
+    const response = await axios.get('https://api.airforce/v1/audio/voices', {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      },
+      timeout: 10000
+    });
+
+    if (response.status === 200) {
+      return { valid: true };
+    }
+
+    return {
+      valid: false,
+      error: `Unexpected status: ${response.status}`
+    };
+  } catch (error) {
+    if (error.response) {
+      if (error.response.status === 401) {
+        return {
+          valid: false,
+          error: 'Invalid API key (401 Unauthorized)'
+        };
+      }
+      return {
+        valid: false,
+        error: `API error: ${error.response.status} ${error.response.statusText}`
+      };
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      return {
+        valid: false,
+        error: 'Request timeout - check your internet connection'
+      };
+    }
+
+    return {
+      valid: false,
+      error: `Network error: ${error.message}`
+    };
+  }
+}
+
+/**
  * Validate SIP extension format
  * @param {string} extension - SIP extension number
  * @returns {boolean} True if valid

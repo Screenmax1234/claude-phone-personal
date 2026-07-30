@@ -131,7 +131,11 @@ test('docker compose generation', async (t) => {
         }
       ],
       api: {
-        elevenlabs: { apiKey: 'elev-key' },
+        tts: {
+          provider: 'elevenlabs',
+          elevenlabs: { apiKey: 'elev-key' },
+          airforce: { apiKey: 'air-key', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1' }
+        },
         groq: { apiKey: 'groq-key' }
       },
       secrets: {
@@ -175,7 +179,11 @@ test('docker compose generation', async (t) => {
         }
       ],
       api: {
-        elevenlabs: { apiKey: 'elev-key' },
+        tts: {
+          provider: 'elevenlabs',
+          elevenlabs: { apiKey: 'elev-key' },
+          airforce: { apiKey: 'air-key', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1' }
+        },
         groq: { apiKey: 'groq-key' }
       },
       secrets: {
@@ -214,7 +222,11 @@ test('docker compose generation', async (t) => {
         }
       ],
       api: {
-        elevenlabs: { apiKey: 'elev-key' },
+        tts: {
+          provider: 'elevenlabs',
+          elevenlabs: { apiKey: 'elev-key' },
+          airforce: { apiKey: 'air-key', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1' }
+        },
         groq: { apiKey: 'groq-key' }
       },
       secrets: {
@@ -241,6 +253,16 @@ test('docker compose generation', async (t) => {
       'Should emit GROQ_API_KEY from config');
     assert.ok(!envFile.includes('OPENAI_API_KEY='),
       'Should not emit legacy OPENAI_API_KEY');
+
+    // Should emit TTS_PROVIDER and both provider keys
+    assert.ok(envFile.includes('TTS_PROVIDER=elevenlabs'),
+      'Should emit TTS_PROVIDER from config');
+    assert.ok(envFile.includes('ELEVENLABS_API_KEY=elev-key'),
+      'Should emit ELEVENLABS_API_KEY from config');
+    assert.ok(envFile.includes('AIRFORCE_API_KEY=air-key'),
+      'Should emit AIRFORCE_API_KEY from config');
+    assert.ok(envFile.includes('AIRFORCE_TTS_MODEL=eleven-turbo-v2-5'),
+      'Should emit AIRFORCE_TTS_MODEL from config');
   });
 
   await t.test('generates env file with remote API for voice-server mode', () => {
@@ -263,7 +285,11 @@ test('docker compose generation', async (t) => {
         }
       ],
       api: {
-        elevenlabs: { apiKey: 'elev-key' },
+        tts: {
+          provider: 'elevenlabs',
+          elevenlabs: { apiKey: 'elev-key' },
+          airforce: { apiKey: 'air-key', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1' }
+        },
         groq: { apiKey: 'groq-key' }
       },
       secrets: {
