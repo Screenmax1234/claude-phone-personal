@@ -47,6 +47,9 @@ export async function configShowCommand() {
   if (ttsProvider === 'airforce') {
     console.log(chalk.gray(`  Airforce API Key: ${redactValue(tts.airforce?.apiKey)}`));
     console.log(chalk.gray(`  Airforce TTS Model: ${tts.airforce?.model || '(not set)'}`));
+  } else if (ttsProvider === 'electronhub') {
+    console.log(chalk.gray(`  ElectronHub API Key: ${redactValue(tts.electronhub?.apiKey)}`));
+    console.log(chalk.gray(`  ElectronHub TTS Model: ${tts.electronhub?.model || '(not set)'}`));
   } else {
     console.log(chalk.gray(`  ElevenLabs API Key: ${redactValue(tts.elevenlabs?.apiKey)}`));
   }

@@ -14,6 +14,7 @@ const Module = require('module');
 
 const ELEVENLABS_PATH = require.resolve('../lib/tts/elevenlabs.js');
 const AIRFORCE_PATH = require.resolve('../lib/tts/airforce.js');
+const ELECTRONHUB_PATH = require.resolve('../lib/tts/electronhub.js');
 const DISPATCHER_PATH = require.resolve('../lib/tts-service.js');
 
 // --- Captured request state -------------------------------------------------
@@ -55,7 +56,10 @@ function loadFresh(modulePath, env) {
     'ELEVENLABS_API_URL',
     'AIRFORCE_API_KEY',
     'AIRFORCE_TTS_MODEL',
-    'AIRFORCE_BASE_URL'
+    'AIRFORCE_BASE_URL',
+    'ELECTRONHUB_API_KEY',
+    'ELECTRONHUB_TTS_MODEL',
+    'ELECTRONHUB_BASE_URL'
   ];
   for (const k of envKeys) {
     saved[k] = process.env[k];
@@ -160,6 +164,46 @@ test('TTS providers and dispatcher', async (t) => {
     assert.strictEqual(lastRequest, null);
   });
 
+  await t.test('electronhub provider posts to /audio/speech with Bearer auth', async (t) => {
+    const { mod, restore } = loadFresh(ELECTRONHUB_PATH, { ELECTRONHUB_API_KEY: 'eh-key' });
+    t.after(restore);
+
+    const buf = await mod.synthesize('hello world', 'coral');
+
+    assert.ok(Buffer.isBuffer(buf));
+    assert.strictEqual(lastRequest.method, 'POST');
+    assert.strictEqual(lastRequest.url, 'https://api.electronhub.ai/v1/audio/speech');
+    assert.strictEqual(lastRequest.headers.Authorization, 'Bearer eh-key');
+    assert.strictEqual(lastRequest.data.model, 'gpt-4o-mini-tts');
+    assert.strictEqual(lastRequest.data.input, 'hello world');
+    assert.strictEqual(lastRequest.data.voice, 'coral');
+    assert.strictEqual(lastRequest.data.response_format, 'mp3');
+    assert.strictEqual(lastRequest.responseType, 'arraybuffer');
+  });
+
+  await t.test('electronhub provider honors model + base URL overrides', async (t) => {
+    const { mod, restore } = loadFresh(ELECTRONHUB_PATH, {
+      ELECTRONHUB_API_KEY: 'eh-key',
+      ELECTRONHUB_TTS_MODEL: 'tts-1-hd',
+      ELECTRONHUB_BASE_URL: 'https://custom.eh.example.com/v1'
+    });
+    t.after(restore);
+
+    await mod.synthesize('hi', 'sage');
+
+    assert.strictEqual(lastRequest.url, 'https://custom.eh.example.com/v1/audio/speech');
+    assert.strictEqual(lastRequest.data.model, 'tts-1-hd');
+    assert.strictEqual(lastRequest.data.voice, 'sage');
+  });
+
+  await t.test('electronhub provider throws when API key missing', async (t) => {
+    const { mod, restore } = loadFresh(ELECTRONHUB_PATH, {});
+    t.after(restore);
+
+    await assert.rejects(() => mod.synthesize('hi', 'coral'), /ELECTRONHUB_API_KEY/);
+    assert.strictEqual(lastRequest, null);
+  });
+
   await t.test('dispatcher routes to elevenlabs by default', async (t) => {
     const { mod, restore } = loadFresh(DISPATCHER_PATH, { ELEVENLABS_API_KEY: 'elev-key' });
     t.after(restore);
@@ -184,6 +228,20 @@ test('TTS providers and dispatcher', async (t) => {
     assert.ok(url.includes('/audio-files/tts-'));
     assert.strictEqual(lastRequest.url, 'https://api.airforce/v1/audio/speech',
       'should route to the airforce endpoint');
+  });
+
+  await t.test('dispatcher routes to electronhub when TTS_PROVIDER=electronhub', async (t) => {
+    const { mod, restore } = loadFresh(DISPATCHER_PATH, {
+      TTS_PROVIDER: 'electronhub',
+      ELECTRONHUB_API_KEY: 'eh-key'
+    });
+    t.after(restore);
+
+    const url = await mod.generateSpeech('hello', 'coral');
+
+    assert.ok(url.includes('/audio-files/tts-'));
+    assert.strictEqual(lastRequest.url, 'https://api.electronhub.ai/v1/audio/speech',
+      'should route to the electronhub endpoint');
   });
 
   await t.test('dispatcher throws on unknown TTS_PROVIDER', async (t) => {

@@ -14,6 +14,7 @@ import {
   validateElevenLabsKey,
   validateGroqKey,
   validateAirforceKey,
+  validateElectronHubKey,
   validateVoiceId,
   validateExtension,
   validateIP,
@@ -707,7 +708,8 @@ function createDefaultConfig() {
       tts: {
         provider: 'elevenlabs',
         elevenlabs: { apiKey: '', defaultVoiceId: '', model: 'eleven_turbo_v2', validated: false },
-        airforce: { apiKey: '', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1', defaultVoice: '', validated: false }
+        airforce: { apiKey: '', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1', defaultVoice: '', validated: false },
+        electronhub: { apiKey: '', model: 'gpt-4o-mini-tts', baseUrl: 'https://api.electronhub.ai/v1', defaultVoice: '', validated: false }
       },
       groq: { apiKey: '', validated: false }
     },
@@ -753,6 +755,10 @@ async function setupAPIKeys(config) {
     apiKey: '', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1', defaultVoice: '', validated: false,
     ...config.api.tts.airforce
   };
+  config.api.tts.electronhub = {
+    apiKey: '', model: 'gpt-4o-mini-tts', baseUrl: 'https://api.electronhub.ai/v1', defaultVoice: '', validated: false,
+    ...config.api.tts.electronhub
+  };
   const tts = config.api.tts;
 
   // === TTS provider selection ===
@@ -763,7 +769,8 @@ async function setupAPIKeys(config) {
       message: 'Text-to-Speech provider:',
       choices: [
         { name: 'ElevenLabs (native api.elevenlabs.io)', value: 'elevenlabs' },
-        { name: 'Airforce (OpenAI-compatible gateway: eleven-* + gpt-4o-mini-tts models)', value: 'airforce' }
+        { name: 'Airforce (OpenAI-compatible gateway: eleven-* + gpt-4o-mini-tts models)', value: 'airforce' },
+        { name: 'ElectronHub (OpenAI-compatible gateway: gpt-4o-mini-tts, tts-1, elevenlabs models)', value: 'electronhub' }
       ],
       default: tts.provider || 'elevenlabs'
     }
@@ -854,7 +861,7 @@ async function setupAPIKeys(config) {
       voiceSpinner.succeed(`Voice ID validated: ${voiceValidation.name}`);
       tts.elevenlabs.defaultVoiceId = defaultVoiceId;
     }
-  } else {
+  } else if (ttsProvider === 'airforce') {
     // === Airforce (OpenAI-compatible gateway) ===
     const airforceAnswers = await inquirer.prompt([
       {
@@ -917,6 +924,70 @@ async function setupAPIKeys(config) {
     } else {
       airforceSpinner.succeed('Airforce API key validated');
       tts.airforce = { apiKey: airforceAnswers.apiKey, model: airforceAnswers.model, baseUrl: tts.airforce.baseUrl || 'https://api.airforce/v1', defaultVoice: airforceAnswers.defaultVoice, validated: true };
+    }
+  } else if (ttsProvider === 'electronhub') {
+    // === ElectronHub (OpenAI-compatible gateway) ===
+    const electronhubAnswers = await inquirer.prompt([
+      {
+        type: 'password',
+        name: 'apiKey',
+        message: 'ElectronHub API key (get one at https://www.electronhub.ai):',
+        default: tts.electronhub.apiKey,
+        validate: (input) => {
+          if (!input || input.trim() === '') {
+            return 'API key is required';
+          }
+          return true;
+        }
+      },
+      {
+        type: 'input',
+        name: 'model',
+        message: 'ElectronHub TTS model:',
+        default: tts.electronhub.model || 'gpt-4o-mini-tts',
+        validate: (input) => {
+          if (!input || input.trim() === '') {
+            return 'Model is required';
+          }
+          return true;
+        }
+      },
+      {
+        type: 'input',
+        name: 'defaultVoice',
+        message: 'Default voice (OpenAI name like "coral" for gpt-4o-mini-tts/tts-1, or descriptive name for elevenlabs model):',
+        default: tts.electronhub.defaultVoice || 'coral',
+        validate: (input) => {
+          if (!input || input.trim() === '') {
+            return 'Voice is required';
+          }
+          return true;
+        }
+      }
+    ]);
+
+    const electronhubSpinner = ora('Validating ElectronHub API key...').start();
+    const electronhubResult = await validateElectronHubKey(electronhubAnswers.apiKey);
+    if (!electronhubResult.valid) {
+      electronhubSpinner.fail(`Invalid ElectronHub API key: ${electronhubResult.error}`);
+      console.log(chalk.yellow('\n⚠️  You can continue setup, but the key may not work.'));
+      const { continueAnyway } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'continueAnyway',
+          message: 'Continue anyway?',
+          default: false
+        }
+      ]);
+
+      if (!continueAnyway) {
+        throw new Error('Setup cancelled due to invalid API key');
+      }
+
+      tts.electronhub = { apiKey: electronhubAnswers.apiKey, model: electronhubAnswers.model, baseUrl: tts.electronhub.baseUrl || 'https://api.electronhub.ai/v1', defaultVoice: electronhubAnswers.defaultVoice, validated: false };
+    } else {
+      electronhubSpinner.succeed('ElectronHub API key validated');
+      tts.electronhub = { apiKey: electronhubAnswers.apiKey, model: electronhubAnswers.model, baseUrl: tts.electronhub.baseUrl || 'https://api.electronhub.ai/v1', defaultVoice: electronhubAnswers.defaultVoice, validated: true };
     }
   }
 
@@ -1057,9 +1128,10 @@ async function setupDevice(config) {
 
   // Resolve default voice based on active TTS provider
   const tts = config.api?.tts || {};
-  const defaultVoice = tts.provider === 'airforce'
-    ? (tts.airforce?.defaultVoice || tts.elevenlabs?.defaultVoiceId || '')
-    : (tts.elevenlabs?.defaultVoiceId || tts.airforce?.defaultVoice || '');
+  const isGateway = tts.provider === 'airforce' || tts.provider === 'electronhub';
+  const defaultVoice = isGateway
+    ? (tts[tts.provider]?.defaultVoice || tts.elevenlabs?.defaultVoiceId || '')
+    : (tts.elevenlabs?.defaultVoiceId || tts.airforce?.defaultVoice || tts.electronhub?.defaultVoice || '');
 
   const answers = await inquirer.prompt([
     {
@@ -1113,9 +1185,9 @@ async function setupDevice(config) {
     {
       type: 'input',
       name: 'voiceId',
-      message: tts.provider === 'airforce'
-        ? 'Voice (ElevenLabs ID for eleven-* models, or OpenAI name like "coral"):'
-        : 'ElevenLabs voice ID:',
+      message: tts.provider === 'elevenlabs'
+        ? 'ElevenLabs voice ID:'
+        : 'Voice (OpenAI name like "coral", or provider-specific name):',
       default: existingDevice?.voiceId || defaultVoice,
       validate: (input) => {
         if (!input || input.trim() === '') {

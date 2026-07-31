@@ -8,8 +8,8 @@
  *
  * Provider is selected via the TTS_PROVIDER env var (default "elevenlabs"):
  *   - elevenlabs : native ElevenLabs API (api.elevenlabs.io)
- *   - airforce   : OpenAI-compatible gateway (api.airforce) hosting the
- *                  eleven-* and gpt-4o-mini-tts models
+ *   - airforce   : OpenAI-compatible gateway (api.airforce)
+ *   - electronhub: OpenAI-compatible gateway (api.electronhub.ai)
  */
 
 const fs = require('fs');
@@ -18,16 +18,15 @@ const crypto = require('crypto');
 const logger = require('./logger');
 const elevenlabs = require('./tts/elevenlabs');
 const airforce = require('./tts/airforce');
+const electronhub = require('./tts/electronhub');
 
-const PROVIDERS = { elevenlabs, airforce };
+const PROVIDERS = { elevenlabs, airforce, electronhub };
 
 const ACTIVE_PROVIDER = (process.env.TTS_PROVIDER || 'elevenlabs').toLowerCase();
-// Default voice when a caller omits voiceId. The Morpheus hash is only valid for
-// ElevenLabs / airforce eleven-* models; for airforce OpenAI-style models a
-// short name like "coral" is required. TTS_DEFAULT_VOICE (set from device
-// config) overrides either fallback in production.
+// Default voice when a caller omits voiceId. Hash IDs are only valid for
+// ElevenLabs; OpenAI-compatible gateways (airforce/electronhub) need a name.
 const DEFAULT_VOICE_ID = process.env.TTS_DEFAULT_VOICE ||
-  (ACTIVE_PROVIDER === 'airforce' ? 'coral' : 'JAgnJveGGUh4qy4kh6dF'); // Morpheus
+  (ACTIVE_PROVIDER === 'elevenlabs' ? 'JAgnJveGGUh4qy4kh6dF' : 'coral');
 
 // Audio output directory (set via setAudioDir)
 let audioDir = path.join(__dirname, '../audio-temp');

@@ -101,6 +101,9 @@ Key environment variables in the generated `.env`:
 | `AIRFORCE_API_KEY` | Airforce TTS key (used when `TTS_PROVIDER=airforce`) |
 | `AIRFORCE_TTS_MODEL` | Airforce TTS model (default `eleven-turbo-v2-5`) |
 | `AIRFORCE_BASE_URL` | Airforce API base URL (default `https://api.airforce/v1`) |
+| `ELECTRONHUB_API_KEY` | ElectronHub TTS key (used when `TTS_PROVIDER=electronhub`) |
+| `ELECTRONHUB_TTS_MODEL` | ElectronHub TTS model (default `gpt-4o-mini-tts`) |
+| `ELECTRONHUB_BASE_URL` | ElectronHub API base URL (default `https://api.electronhub.ai/v1`) |
 | `GROQ_API_KEY` | Whisper STT API key |
 | `SIP_DOMAIN` | 3CX server FQDN |
 | `SIP_REGISTRAR` | SIP registrar address |

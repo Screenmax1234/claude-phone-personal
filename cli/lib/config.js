@@ -62,6 +62,13 @@ export async function loadConfig() {
         baseUrl: 'https://api.airforce/v1',
         defaultVoice: '',
         validated: false
+      },
+      electronhub: {
+        apiKey: '',
+        model: 'gpt-4o-mini-tts',
+        baseUrl: 'https://api.electronhub.ai/v1',
+        defaultVoice: '',
+        validated: false
       }
     };
     delete config.api.elevenlabs;

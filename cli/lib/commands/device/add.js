@@ -22,9 +22,10 @@ export async function deviceAddCommand() {
 
   // Resolve default voice based on active TTS provider
   const tts = config.api?.tts || {};
-  const defaultVoice = tts.provider === 'airforce'
-    ? (tts.airforce?.defaultVoice || tts.elevenlabs?.defaultVoiceId || '')
-    : (tts.elevenlabs?.defaultVoiceId || tts.airforce?.defaultVoice || '');
+  const isGateway = tts.provider === 'airforce' || tts.provider === 'electronhub';
+  const defaultVoice = isGateway
+    ? (tts[tts.provider]?.defaultVoice || tts.elevenlabs?.defaultVoiceId || '')
+    : (tts.elevenlabs?.defaultVoiceId || tts.airforce?.defaultVoice || tts.electronhub?.defaultVoice || '');
 
   // Gather device information
   const answers = await inquirer.prompt([
@@ -80,9 +81,9 @@ export async function deviceAddCommand() {
     {
       type: 'input',
       name: 'voiceId',
-      message: tts.provider === 'airforce'
-        ? 'Voice (ElevenLabs ID for eleven-* models, or OpenAI name like "coral"):'
-        : 'ElevenLabs voice ID:',
+      message: tts.provider === 'elevenlabs'
+        ? 'ElevenLabs voice ID:'
+        : 'Voice (OpenAI name like "coral", or provider-specific name):',
       default: defaultVoice,
       validate: (input) => {
         if (!input || input.trim() === '') {

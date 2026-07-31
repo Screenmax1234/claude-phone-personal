@@ -174,6 +174,58 @@ export async function validateAirforceKey(apiKey) {
 }
 
 /**
+ * Validate ElectronHub API key by making a test request
+ * @param {string} apiKey - ElectronHub API key
+ * @returns {Promise<{valid: boolean, error?: string}>} Validation result
+ */
+export async function validateElectronHubKey(apiKey) {
+  if (!apiKey || apiKey.trim() === '') {
+    return {
+      valid: false,
+      error: 'API key cannot be empty'
+    };
+  }
+
+  try {
+    // /models is public on ElectronHub, so we POST a minimal /audio/speech
+    // request with empty input. A valid key gets 400 (bad request), an invalid
+    // key gets 401. Any non-401 response confirms the key is authenticated.
+    const response = await axios.post('https://api.electronhub.ai/v1/audio/speech', {
+      model: 'gpt-4o-mini-tts',
+      input: '',
+      voice: 'coral'
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      },
+      timeout: 10000,
+      validateStatus: () => true
+    });
+
+    if (response.status === 401) {
+      return {
+        valid: false,
+        error: 'Invalid API key (401 Unauthorized)'
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      return {
+        valid: false,
+        error: 'Request timeout - check your internet connection'
+      };
+    }
+
+    return {
+      valid: false,
+      error: `Network error: ${error.message}`
+    };
+  }
+}
+
+/**
  * Validate SIP extension format
  * @param {string} extension - SIP extension number
  * @returns {boolean} True if valid

@@ -5,7 +5,7 @@ import axios from 'axios';
 import { loadConfig, configExists, getInstallationType } from '../config.js';
 import { checkDocker, getContainerStatus } from '../docker.js';
 import { isServerRunning, getServerPid } from '../process-manager.js';
-import { validateElevenLabsKey, validateGroqKey, validateAirforceKey } from '../validators.js';
+import { validateElevenLabsKey, validateGroqKey, validateAirforceKey, validateElectronHubKey } from '../validators.js';
 import { isReachable, checkClaudeApiServer as checkClaudeApiHealth } from '../network.js';
 import { checkPort } from '../port-check.js';
 
@@ -79,6 +79,24 @@ async function checkElevenLabsAPI(apiKey) {
 async function checkAirforceAPI(apiKey) {
   try {
     const result = await validateAirforceKey(apiKey);
+    if (result.valid) {
+      return { connected: true };
+    } else {
+      return { connected: false, error: result.error };
+    }
+  } catch (error) {
+    return { connected: false, error: error.message };
+  }
+}
+
+/**
+ * Check ElectronHub API connectivity
+ * @param {string} apiKey - ElectronHub API key
+ * @returns {Promise<{connected: boolean, error?: string}>}
+ */
+async function checkElectronHubAPI(apiKey) {
+  try {
+    const result = await validateElectronHubKey(apiKey);
     if (result.valid) {
       return { connected: true };
     } else {
@@ -303,7 +321,25 @@ async function runVoiceServerChecks(config, isPiSplit) {
 
   // Check active TTS provider (only the configured one)
   const ttsProvider = (config.api && config.api.tts && config.api.tts.provider) || 'elevenlabs';
-  if (ttsProvider === 'airforce') {
+  if (ttsProvider === 'electronhub') {
+    if (config.api?.tts?.electronhub?.apiKey) {
+      const ehSpinner = ora('Checking ElectronHub TTS API...').start();
+      const ehResult = await checkElectronHubAPI(config.api.tts.electronhub.apiKey);
+      if (ehResult.connected) {
+        ehSpinner.succeed(chalk.green('ElectronHub TTS API connected'));
+        passedCount++;
+      } else {
+        ehSpinner.fail(chalk.red(`ElectronHub TTS API failed: ${ehResult.error}`));
+        console.log(chalk.gray('  → Check your API key in ~/.claude-phone/config.json\n'));
+      }
+      checks.push({ name: 'ElectronHub TTS API', passed: ehResult.connected });
+    } else {
+      const ehSpinner = ora('Checking ElectronHub TTS API...').start();
+      ehSpinner.fail(chalk.red('ElectronHub TTS API not configured (no API key set)'));
+      console.log(chalk.gray('  → Run "claude-phone setup" to configure the ElectronHub provider\n'));
+      checks.push({ name: 'ElectronHub TTS API', passed: false });
+    }
+  } else if (ttsProvider === 'airforce') {
     if (config.api?.tts?.airforce?.apiKey) {
       const airforceSpinner = ora('Checking Airforce TTS API...').start();
       const airforceResult = await checkAirforceAPI(config.api.tts.airforce.apiKey);

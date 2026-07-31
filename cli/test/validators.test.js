@@ -3,7 +3,8 @@ import assert from 'node:assert';
 import {
   validateElevenLabsKey,
   validateGroqKey,
-  validateAirforceKey
+  validateAirforceKey,
+  validateElectronHubKey
 } from '../lib/validators.js';
 
 test('validators module', async (t) => {
@@ -39,6 +40,18 @@ test('validators module', async (t) => {
 
   await t.test('validateAirforceKey rejects invalid format', async () => {
     const result = await validateAirforceKey('invalid-key');
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.error);
+  });
+
+  await t.test('validateElectronHubKey rejects empty key', async () => {
+    const result = await validateElectronHubKey('');
+    assert.strictEqual(result.valid, false);
+    assert.match(result.error, /API key cannot be empty/);
+  });
+
+  await t.test('validateElectronHubKey rejects invalid format', async () => {
+    const result = await validateElectronHubKey('invalid-key');
     assert.strictEqual(result.valid, false);
     assert.ok(result.error);
   });
