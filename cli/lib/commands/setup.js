@@ -316,6 +316,9 @@ async function setupVoiceServer(config) {
     config.deployment.mode = 'voice-server';
   }
 
+  // Detect 3CX SBC (avoid drachtio/SBC port conflict on any host, not just Pi)
+  config = await detectAndConfigureSbc(config);
+
   // Step 1: 3CX/SIP Configuration
   console.log(chalk.bold('\n☎️  SIP Configuration'));
   config = await setupSIP(config);
@@ -426,6 +429,9 @@ async function setupBoth(config) {
     config.deployment.mode = 'both';
   }
 
+  // Detect 3CX SBC (avoid drachtio/SBC port conflict on any host, not just Pi)
+  config = await detectAndConfigureSbc(config);
+
   // Step 1: API Keys
   console.log(chalk.bold('\n📡 API Configuration'));
   config = await setupAPIKeys(config);
@@ -441,6 +447,65 @@ async function setupBoth(config) {
   // Step 4: Server Configuration
   console.log(chalk.bold('\n⚙️  Server Configuration'));
   config = await setupServer(config);
+
+  return config;
+}
+
+/**
+ * Detect 3CX SBC on port 5060 and configure drachtio port accordingly.
+ * Runs in all Docker-based setup modes (not just Pi) since the 3CX SBC
+ * can run on any Linux host and will otherwise conflict with drachtio.
+ * @param {object} config - Current config
+ * @returns {Promise<object>} Updated config
+ */
+async function detectAndConfigureSbc(config) {
+  if (!config.deployment) {
+    config.deployment = {};
+  }
+  if (!config.deployment.pi) {
+    config.deployment.pi = {};
+  }
+
+  console.log(chalk.bold('\n🔍 Network Detection'));
+  const sbc3cxSpinner = ora('Checking for 3CX SBC (process + UDP/TCP port 5060)...').start();
+
+  let has3cxSbc;
+  let portCheckError = false;
+
+  try {
+    has3cxSbc = await detect3cxSbc();
+    if (has3cxSbc) {
+      sbc3cxSpinner.succeed('3CX SBC detected - will use port 5070 for drachtio');
+    } else {
+      sbc3cxSpinner.succeed('No 3CX SBC detected - will use standard port 5060');
+    }
+  } catch (err) {
+    portCheckError = true;
+    sbc3cxSpinner.warn('Port detection failed: ' + err.message);
+  }
+
+  // AC24: Manual override when port detection fails
+  if (portCheckError) {
+    console.log(chalk.yellow('\n⚠️  Could not automatically detect 3CX SBC'));
+    const { manualSbc } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'manualSbc',
+        message: 'Is 3CX SBC running on port 5060?',
+        default: false
+      }
+    ]);
+    has3cxSbc = manualSbc;
+
+    if (has3cxSbc) {
+      console.log(chalk.green('✓ Will use port 5070 for drachtio (avoid conflict with SBC)\n'));
+    } else {
+      console.log(chalk.green('✓ Will use port 5060 for drachtio\n'));
+    }
+  }
+
+  config.deployment.pi.has3cxSbc = has3cxSbc;
+  config.deployment.pi.drachtioPort = has3cxSbc ? 5070 : 5060;
 
   return config;
 }
@@ -519,47 +584,8 @@ async function setupPi(config) {
     }
   }
 
-  // Detect 3CX SBC (AC24: Handle port detection failure)
-  console.log(chalk.bold('\n🔍 Network Detection'));
-  const sbc3cxSpinner = ora('Checking for 3CX SBC (process + UDP/TCP port 5060)...').start();
-
-  let has3cxSbc;
-  let portCheckError = false;
-
-  try {
-    has3cxSbc = await detect3cxSbc();
-    if (has3cxSbc) {
-      sbc3cxSpinner.succeed('3CX SBC detected - will use port 5070 for drachtio');
-    } else {
-      sbc3cxSpinner.succeed('No 3CX SBC detected - will use standard port 5060');
-    }
-  } catch (err) {
-    portCheckError = true;
-    sbc3cxSpinner.warn('Port detection failed: ' + err.message);
-  }
-
-  // AC24: Manual override when port detection fails
-  if (portCheckError) {
-    console.log(chalk.yellow('\n⚠️  Could not automatically detect 3CX SBC'));
-    const { manualSbc } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'manualSbc',
-        message: 'Is 3CX SBC running on port 5060?',
-        default: false
-      }
-    ]);
-    has3cxSbc = manualSbc;
-
-    if (has3cxSbc) {
-      console.log(chalk.green('✓ Will use port 5070 for drachtio (avoid conflict with SBC)\n'));
-    } else {
-      console.log(chalk.green('✓ Will use port 5060 for drachtio\n'));
-    }
-  }
-
-  config.deployment.pi.has3cxSbc = has3cxSbc;
-  config.deployment.pi.drachtioPort = has3cxSbc ? 5070 : 5060;
+  // Detect 3CX SBC and configure drachtio port (shared with all Docker setup modes)
+  config = await detectAndConfigureSbc(config);
 
   // Ask for API server IP and port first, then check connectivity
   const apiServerAnswers = await inquirer.prompt([
