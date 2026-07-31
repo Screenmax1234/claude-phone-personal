@@ -36,7 +36,7 @@ Claude Phone gives your Claude Code installation a phone number. You can:
 ### 1. Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Screenmax1234/claude-phone-personal/refs/heads/dev/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Screenmax1234/claude-phone-personal/refs/heads/main/install.sh | bash
 ```
 
 The installer will:
