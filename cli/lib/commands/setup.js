@@ -319,9 +319,13 @@ async function setupVoiceServer(config) {
   // Detect 3CX SBC (avoid drachtio/SBC port conflict on any host, not just Pi)
   config = await detectAndConfigureSbc(config);
 
-  // Step 1: 3CX/SIP Configuration
+  // Step 1: 3CX/SIP Configuration (use SBC flow when SBC is present)
   console.log(chalk.bold('\n☎️  SIP Configuration'));
-  config = await setupSIP(config);
+  if (config.deployment.pi.has3cxSbc) {
+    config = await setupSBC(config);
+  } else {
+    config = await setupSIP(config);
+  }
 
   // Step 2: API Server Connection
   console.log(chalk.bold('\n🖥️  API Server Connection'));
@@ -436,9 +440,13 @@ async function setupBoth(config) {
   console.log(chalk.bold('\n📡 API Configuration'));
   config = await setupAPIKeys(config);
 
-  // Step 2: 3CX/SIP Configuration
+  // Step 2: 3CX/SIP Configuration (use SBC flow when SBC is present)
   console.log(chalk.bold('\n☎️  SIP Configuration'));
-  config = await setupSIP(config);
+  if (config.deployment.pi.has3cxSbc) {
+    config = await setupSBC(config);
+  } else {
+    config = await setupSIP(config);
+  }
 
   // Step 3: Device Configuration
   console.log(chalk.bold('\n🤖 Device Configuration'));
