@@ -303,17 +303,24 @@ async function runVoiceServerChecks(config, isPiSplit) {
 
   // Check active TTS provider (only the configured one)
   const ttsProvider = (config.api && config.api.tts && config.api.tts.provider) || 'elevenlabs';
-  if (ttsProvider === 'airforce' && config.api?.tts?.airforce?.apiKey) {
-    const airforceSpinner = ora('Checking Airforce TTS API...').start();
-    const airforceResult = await checkAirforceAPI(config.api.tts.airforce.apiKey);
-    if (airforceResult.connected) {
-      airforceSpinner.succeed(chalk.green('Airforce TTS API connected'));
-      passedCount++;
+  if (ttsProvider === 'airforce') {
+    if (config.api?.tts?.airforce?.apiKey) {
+      const airforceSpinner = ora('Checking Airforce TTS API...').start();
+      const airforceResult = await checkAirforceAPI(config.api.tts.airforce.apiKey);
+      if (airforceResult.connected) {
+        airforceSpinner.succeed(chalk.green('Airforce TTS API connected'));
+        passedCount++;
+      } else {
+        airforceSpinner.fail(chalk.red(`Airforce TTS API failed: ${airforceResult.error}`));
+        console.log(chalk.gray('  → Check your API key in ~/.claude-phone/config.json\n'));
+      }
+      checks.push({ name: 'Airforce TTS API', passed: airforceResult.connected });
     } else {
-      airforceSpinner.fail(chalk.red(`Airforce TTS API failed: ${airforceResult.error}`));
-      console.log(chalk.gray('  → Check your API key in ~/.claude-phone/config.json\n'));
+      const airforceSpinner = ora('Checking Airforce TTS API...').start();
+      airforceSpinner.fail(chalk.red('Airforce TTS API not configured (no API key set)'));
+      console.log(chalk.gray('  → Run "claude-phone setup" to configure the Airforce provider\n'));
+      checks.push({ name: 'Airforce TTS API', passed: false });
     }
-    checks.push({ name: 'Airforce TTS API', passed: airforceResult.connected });
   } else if (config.api?.tts?.elevenlabs?.apiKey) {
     const elevenLabsSpinner = ora('Checking ElevenLabs TTS API...').start();
     const elevenLabsResult = await checkElevenLabsAPI(config.api.tts.elevenlabs.apiKey);

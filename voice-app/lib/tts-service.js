@@ -22,7 +22,12 @@ const airforce = require('./tts/airforce');
 const PROVIDERS = { elevenlabs, airforce };
 
 const ACTIVE_PROVIDER = (process.env.TTS_PROVIDER || 'elevenlabs').toLowerCase();
-const DEFAULT_VOICE_ID = process.env.TTS_DEFAULT_VOICE || 'JAgnJveGGUh4qy4kh6dF'; // Morpheus
+// Default voice when a caller omits voiceId. The Morpheus hash is only valid for
+// ElevenLabs / airforce eleven-* models; for airforce OpenAI-style models a
+// short name like "coral" is required. TTS_DEFAULT_VOICE (set from device
+// config) overrides either fallback in production.
+const DEFAULT_VOICE_ID = process.env.TTS_DEFAULT_VOICE ||
+  (ACTIVE_PROVIDER === 'airforce' ? 'coral' : 'JAgnJveGGUh4qy4kh6dF'); // Morpheus
 
 // Audio output directory (set via setAudioDir)
 let audioDir = path.join(__dirname, '../audio-temp');

@@ -93,6 +93,33 @@ test('config module', async (t) => {
     assert.ok(!config.api.elevenlabs, 'Should remove legacy api.elevenlabs after migration');
   });
 
+  await t.test('loadConfig skips elevenlabs migration when api.tts already exists', async () => {
+    // A config that has both the legacy elevenlabs entry AND a populated api.tts
+    // (e.g. partially migrated) must keep the existing api.tts intact.
+    const mixed = {
+      version: '1.0.0',
+      api: {
+        elevenlabs: { apiKey: 'stale-legacy-key', validated: true },
+        tts: {
+          provider: 'airforce',
+          elevenlabs: { apiKey: 'current-elev-key', model: 'eleven_turbo_v2', validated: true },
+          airforce: { apiKey: 'air-key', model: 'gpt-4o-mini-tts', baseUrl: 'https://api.airforce/v1', defaultVoice: 'coral', validated: true }
+        }
+      }
+    };
+
+    await saveConfig(mixed);
+    const config = await loadConfig();
+
+    // api.tts should be untouched (guard prevented overwrite)
+    assert.strictEqual(config.api.tts.provider, 'airforce');
+    assert.strictEqual(config.api.tts.airforce.apiKey, 'air-key');
+    assert.strictEqual(config.api.tts.airforce.defaultVoice, 'coral');
+    assert.strictEqual(config.api.tts.elevenlabs.apiKey, 'current-elev-key');
+    // legacy api.elevenlabs is NOT removed because the migration guard skipped
+    assert.ok(config.api.elevenlabs, 'Legacy api.elevenlabs remains when api.tts already exists');
+  });
+
   await t.test('loadConfig migrates legacy openai config to groq', async () => {
     // Simulate an old config file written before the Groq migration
     const legacy = {

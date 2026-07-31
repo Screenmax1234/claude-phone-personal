@@ -226,6 +226,7 @@ export function generateEnvFile(config) {
     '',
     '# ElevenLabs (native) - used when TTS_PROVIDER=elevenlabs',
     `ELEVENLABS_API_KEY=${(config.api.tts && config.api.tts.elevenlabs && config.api.tts.elevenlabs.apiKey) || ''}`,
+    `ELEVENLABS_MODEL=${(config.api.tts && config.api.tts.elevenlabs && config.api.tts.elevenlabs.model) || 'eleven_turbo_v2'}`,
     '',
     '# Airforce (OpenAI-compatible gateway) - used when TTS_PROVIDER=airforce',
     `AIRFORCE_API_KEY=${(config.api.tts && config.api.tts.airforce && config.api.tts.airforce.apiKey) || ''}`,

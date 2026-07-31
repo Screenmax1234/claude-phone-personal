@@ -49,9 +49,13 @@ export async function loadConfig() {
 
   // Migrate legacy flat elevenlabs config to api.tts structure (dual TTS providers)
   if (config.api && config.api.elevenlabs && !config.api.tts) {
+    const legacy = config.api.elevenlabs;
     config.api.tts = {
       provider: 'elevenlabs',
-      elevenlabs: config.api.elevenlabs,
+      elevenlabs: {
+        ...legacy,
+        model: legacy.model || 'eleven_turbo_v2'
+      },
       airforce: {
         apiKey: '',
         model: 'eleven-turbo-v2-5',

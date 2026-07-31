@@ -705,14 +705,20 @@ function createDefaultConfig() {
  * @returns {Promise<object>} Updated config
  */
 async function setupAPIKeys(config) {
-  // Ensure api.tts structure exists
+  // Ensure api.tts structure exists, merging defaults into any existing object
+  // so both nested provider entries are always present before later access.
   if (!config.api.tts) {
-    config.api.tts = {
-      provider: 'elevenlabs',
-      elevenlabs: { apiKey: '', defaultVoiceId: '', model: 'eleven_turbo_v2', validated: false },
-      airforce: { apiKey: '', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1', defaultVoice: '', validated: false }
-    };
+    config.api.tts = {};
   }
+  config.api.tts.provider = config.api.tts.provider || 'elevenlabs';
+  config.api.tts.elevenlabs = {
+    apiKey: '', defaultVoiceId: '', model: 'eleven_turbo_v2', validated: false,
+    ...config.api.tts.elevenlabs
+  };
+  config.api.tts.airforce = {
+    apiKey: '', model: 'eleven-turbo-v2-5', baseUrl: 'https://api.airforce/v1', defaultVoice: '', validated: false,
+    ...config.api.tts.airforce
+  };
   const tts = config.api.tts;
 
   // === TTS provider selection ===

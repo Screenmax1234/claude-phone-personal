@@ -259,6 +259,8 @@ test('docker compose generation', async (t) => {
       'Should emit TTS_PROVIDER from config');
     assert.ok(envFile.includes('ELEVENLABS_API_KEY=elev-key'),
       'Should emit ELEVENLABS_API_KEY from config');
+    assert.ok(envFile.includes('ELEVENLABS_MODEL=eleven_turbo_v2'),
+      'Should emit ELEVENLABS_MODEL with default when not configured');
     assert.ok(envFile.includes('AIRFORCE_API_KEY=air-key'),
       'Should emit AIRFORCE_API_KEY from config');
     assert.ok(envFile.includes('AIRFORCE_TTS_MODEL=eleven-turbo-v2-5'),

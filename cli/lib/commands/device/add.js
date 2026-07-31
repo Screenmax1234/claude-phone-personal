@@ -101,8 +101,9 @@ export async function deviceAddCommand() {
 
   // Validate voice ID with ElevenLabs API (only for the native ElevenLabs provider;
   // airforce exposes no reliable per-voice lookup, so we trust the user's input)
+  const provider = tts.provider || 'elevenlabs';
   let voiceName = answers.voiceId;
-  if (tts.provider === 'elevenlabs' && tts.elevenlabs?.apiKey) {
+  if (provider === 'elevenlabs' && tts.elevenlabs?.apiKey) {
     const spinner = ora('Validating voice ID with ElevenLabs...').start();
     const voiceResult = await validateVoiceId(tts.elevenlabs.apiKey, answers.voiceId);
 
