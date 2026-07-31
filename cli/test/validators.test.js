@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import {
   validateElevenLabsKey,
-  validateGroqKey
+  validateGroqKey,
+  validateAirforceKey
 } from '../lib/validators.js';
 
 test('validators module', async (t) => {
@@ -26,6 +27,18 @@ test('validators module', async (t) => {
 
   await t.test('validateGroqKey rejects invalid format', async () => {
     const result = await validateGroqKey('invalid-key');
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.error);
+  });
+
+  await t.test('validateAirforceKey rejects empty key', async () => {
+    const result = await validateAirforceKey('');
+    assert.strictEqual(result.valid, false);
+    assert.match(result.error, /API key cannot be empty/);
+  });
+
+  await t.test('validateAirforceKey rejects invalid format', async () => {
+    const result = await validateAirforceKey('invalid-key');
     assert.strictEqual(result.valid, false);
     assert.ok(result.error);
   });

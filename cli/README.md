@@ -34,7 +34,7 @@ Select this when setting up a Raspberry Pi or dedicated voice box that connects 
 **What it asks for:**
 1. 3CX SIP domain and registrar
 2. API server IP and port (where claude-api-server runs)
-3. ElevenLabs API key and default voice ID
+3. TTS provider (ElevenLabs native, or Airforce gateway) and default voice
 4. Groq API key (for Whisper STT)
 5. Device configuration (name, extension, auth, voice, prompt)
 6. Server LAN IP (for RTP audio routing)
@@ -60,8 +60,8 @@ Select this when setting up the Claude API wrapper on a machine with Claude Code
 Select this for a single machine running everything.
 
 **What it asks for:**
-1. ElevenLabs API key and default voice ID
-2. OpenAI API key
+1. TTS provider (ElevenLabs native, or Airforce gateway) and default voice
+2. Groq API key (for Whisper STT)
 3. 3CX SIP domain and registrar
 4. Device configuration
 5. Server LAN IP, API port, and HTTP port
@@ -151,7 +151,11 @@ All configuration is stored in `~/.claude-phone/`:
   "version": "1.0.0",
   "installationType": "both",
   "api": {
-    "elevenlabs": { "apiKey": "...", "defaultVoiceId": "...", "validated": true },
+    "tts": {
+      "provider": "elevenlabs",
+      "elevenlabs": { "apiKey": "...", "defaultVoiceId": "...", "model": "eleven_turbo_v2", "validated": true },
+      "airforce": { "apiKey": "...", "model": "eleven-turbo-v2-5", "baseUrl": "https://api.airforce/v1", "defaultVoice": "", "validated": false }
+    },
     "groq": { "apiKey": "...", "validated": true }
   },
   "sip": {

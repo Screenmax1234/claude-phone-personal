@@ -20,6 +20,12 @@ export async function deviceAddCommand() {
 
   const config = await loadConfig();
 
+  // Resolve default voice based on active TTS provider
+  const tts = config.api?.tts || {};
+  const defaultVoice = tts.provider === 'airforce'
+    ? (tts.airforce?.defaultVoice || tts.elevenlabs?.defaultVoiceId || '')
+    : (tts.elevenlabs?.defaultVoiceId || tts.airforce?.defaultVoice || '');
+
   // Gather device information
   const answers = await inquirer.prompt([
     {
@@ -74,8 +80,10 @@ export async function deviceAddCommand() {
     {
       type: 'input',
       name: 'voiceId',
-      message: 'ElevenLabs voice ID:',
-      default: config.api.elevenlabs.defaultVoiceId || '',
+      message: tts.provider === 'airforce'
+        ? 'Voice (ElevenLabs ID for eleven-* models, or OpenAI name like "coral"):'
+        : 'ElevenLabs voice ID:',
+      default: defaultVoice,
       validate: (input) => {
         if (!input || input.trim() === '') {
           return 'Voice ID cannot be empty';
@@ -91,17 +99,23 @@ export async function deviceAddCommand() {
     }
   ]);
 
-  // Validate voice ID with ElevenLabs API
-  const spinner = ora('Validating voice ID with ElevenLabs...').start();
-  const voiceResult = await validateVoiceId(config.api.elevenlabs.apiKey, answers.voiceId);
+  // Validate voice ID with ElevenLabs API (only for the native ElevenLabs provider;
+  // airforce exposes no reliable per-voice lookup, so we trust the user's input)
+  const provider = tts.provider || 'elevenlabs';
+  let voiceName = answers.voiceId;
+  if (provider === 'elevenlabs' && tts.elevenlabs?.apiKey) {
+    const spinner = ora('Validating voice ID with ElevenLabs...').start();
+    const voiceResult = await validateVoiceId(tts.elevenlabs.apiKey, answers.voiceId);
 
-  if (!voiceResult.valid) {
-    spinner.fail(chalk.red(`Voice ID validation failed: ${voiceResult.error}`));
-    console.log(chalk.gray('\nPlease check your voice ID and try again.\n'));
-    process.exit(1);
+    if (!voiceResult.valid) {
+      spinner.fail(chalk.red(`Voice ID validation failed: ${voiceResult.error}`));
+      console.log(chalk.gray('\nPlease check your voice ID and try again.\n'));
+      process.exit(1);
+    }
+
+    spinner.succeed(chalk.green(`Voice validated: ${voiceResult.name}`));
+    voiceName = voiceResult.name;
   }
-
-  spinner.succeed(chalk.green(`Voice validated: ${voiceResult.name}`));
 
   // Add device to config
   const newDevice = {
@@ -128,7 +142,7 @@ export async function deviceAddCommand() {
   console.log(chalk.gray('\nDevice details:'));
   console.log(chalk.gray(`  Name: ${newDevice.name}`));
   console.log(chalk.gray(`  Extension: ${newDevice.extension}`));
-  console.log(chalk.gray(`  Voice: ${voiceResult.name} (${newDevice.voiceId})`));
+  console.log(chalk.gray(`  Voice: ${voiceName} (${newDevice.voiceId})`));
   console.log(chalk.yellow('\n⚠ Restart services to apply changes:'));
   console.log(chalk.gray('  claude-phone stop'));
   console.log(chalk.gray('  claude-phone start\n'));

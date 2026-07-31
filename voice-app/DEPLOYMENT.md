@@ -94,7 +94,13 @@ Key environment variables in the generated `.env`:
 |----------|---------|
 | `EXTERNAL_IP` | Server LAN IP for RTP routing |
 | `CLAUDE_API_URL` | URL to claude-api-server |
-| `ELEVENLABS_API_KEY` | TTS API key |
+| `TTS_PROVIDER` | Active TTS provider (`elevenlabs` or `airforce`) |
+| `TTS_DEFAULT_VOICE` | Default voice used when a device has no explicit voiceId (ElevenLabs hash, or OpenAI name like `coral` for airforce OpenAI-style models) |
+| `ELEVENLABS_API_KEY` | ElevenLabs TTS key (used when `TTS_PROVIDER=elevenlabs`) |
+| `ELEVENLABS_MODEL` | ElevenLabs model (default `eleven_turbo_v2`) |
+| `AIRFORCE_API_KEY` | Airforce TTS key (used when `TTS_PROVIDER=airforce`) |
+| `AIRFORCE_TTS_MODEL` | Airforce TTS model (default `eleven-turbo-v2-5`) |
+| `AIRFORCE_BASE_URL` | Airforce API base URL (default `https://api.airforce/v1`) |
 | `GROQ_API_KEY` | Whisper STT API key |
 | `SIP_DOMAIN` | 3CX server FQDN |
 | `SIP_REGISTRAR` | SIP registrar address |

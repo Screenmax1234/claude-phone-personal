@@ -36,6 +36,11 @@ claude-phone logs     # View recent logs
 - Free tier has limited characters/month
 - Check [elevenlabs.io/subscription](https://elevenlabs.io/subscription)
 
+**For Airforce (alternative TTS provider):**
+- Free tier: 1 request/minute, 1000 requests/day
+- Check [api.airforce](https://api.airforce/dashboard/) for usage and credits
+- Voices: ElevenLabs IDs work with `eleven-*` models; use OpenAI names (coral, sage…) with `gpt-4o-mini-tts`
+
 ### "Can't detect 3CX SBC"
 
 **Symptom:** Setup can't connect to your 3CX server.
@@ -195,14 +200,19 @@ claude-phone start
 | Audio quality poor | Check microphone, reduce background noise |
 | Network latency | Audio chunks may be lost; check connection |
 
-### ElevenLabs TTS errors
+### TTS errors
 
 **Symptom:** Claude's responses aren't spoken, or voice sounds wrong.
 
 **Solutions:**
-1. Check ElevenLabs character quota isn't exhausted
-2. Verify voice ID is valid: `claude-phone device list`
-3. Check API key still works
+1. Check your active TTS provider's quota isn't exhausted
+   - ElevenLabs: [elevenlabs.io/subscription](https://elevenlabs.io/subscription)
+   - Airforce: [api.airforce/dashboard](https://api.airforce/dashboard/)
+2. Verify the voice matches the model:
+   - `eleven-*` models → ElevenLabs voice ID (hash)
+   - `gpt-4o-mini-tts` → OpenAI voice name (coral, sage, alloy…)
+3. Run `claude-phone doctor` to check the active TTS provider
+4. Switch provider by setting `TTS_PROVIDER` in `.env` and restarting
 
 ### Calls disconnect after a few seconds
 

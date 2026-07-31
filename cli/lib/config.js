@@ -47,6 +47,27 @@ export async function loadConfig() {
     console.log('Migrated openai -> groq config (Whisper STT provider changed).');
   }
 
+  // Migrate legacy flat elevenlabs config to api.tts structure (dual TTS providers)
+  if (config.api && config.api.elevenlabs && !config.api.tts) {
+    const legacy = config.api.elevenlabs;
+    config.api.tts = {
+      provider: 'elevenlabs',
+      elevenlabs: {
+        ...legacy,
+        model: legacy.model || 'eleven_turbo_v2'
+      },
+      airforce: {
+        apiKey: '',
+        model: 'eleven-turbo-v2-5',
+        baseUrl: 'https://api.airforce/v1',
+        defaultVoice: '',
+        validated: false
+      }
+    };
+    delete config.api.elevenlabs;
+    console.log('Migrated elevenlabs -> api.tts config (dual TTS provider support).');
+  }
+
   // Ensure installationType exists for backward compatibility
   if (!config.installationType) {
     config.installationType = 'both';

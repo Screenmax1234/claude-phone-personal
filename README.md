@@ -18,7 +18,8 @@ Claude Phone gives your Claude Code installation a phone number. You can:
 | Requirement | Where to Get It | Notes |
 |-------------|-----------------|-------|
 | **3CX Cloud Account** | [3cx.com](https://www.3cx.com/) | Free tier works |
-| **ElevenLabs API Key** | [elevenlabs.io](https://elevenlabs.io/) | For text-to-speech |
+| **ElevenLabs API Key** | [elevenlabs.io](https://elevenlabs.io/) | For text-to-speech (default provider) |
+| **Airforce API Key** *(optional)* | [api.airforce](https://api.airforce/dashboard/#api-keys) | Alternative TTS provider (OpenAI-compatible gateway) |
 | **Groq API Key** | [console.groq.com/keys](https://console.groq.com/keys) | For Whisper speech-to-text (free tier) |
 | **Claude Code CLI** | [claude.ai/code](https://claude.ai/code) | Requires Claude Max subscription |
 
@@ -35,7 +36,7 @@ Claude Phone gives your Claude Code installation a phone number. You can:
 ### 1. Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/theNetworkChuck/claude-phone/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Screenmax1234/claude-phone-personal/refs/heads/dev/install.sh | bash
 ```
 
 The installer will:

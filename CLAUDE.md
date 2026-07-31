@@ -16,7 +16,7 @@ Claude Phone gives your Claude Code installation a phone number through 3CX PBX 
 | SIP Server | drachtio-srf |
 | Media Server | FreeSWITCH (via drachtio-fsmrf) |
 | STT | Groq Whisper API (OpenAI-compatible) |
-| TTS | ElevenLabs API |
+| TTS | ElevenLabs API or Airforce (OpenAI-compatible gateway) |
 | AI Backend | Claude Code CLI (via HTTP wrapper) |
 | PBX | 3CX (any SIP-compatible works) |
 | Container | Docker Compose |
@@ -132,7 +132,10 @@ claude-phone/
 │   │   ├── query-routes.js   # Query API endpoints
 │   │   ├── registrar.js      # Single SIP registration
 │   │   ├── sip-handler.js    # Inbound call handling
-│   │   ├── tts-service.js    # ElevenLabs TTS
+│   │   ├── tts-service.js    # TTS dispatcher (provider router)
+│   │   ├── tts/              # TTS providers
+│   │   │   ├── elevenlabs.js # Native ElevenLabs
+│   │   │   └── airforce.js   # Airforce OpenAI-compatible gateway
 │   │   └── whisper-client.js # Groq Whisper STT
 │   ├── DEPLOYMENT.md         # Production deployment guide
 │   ├── README-OUTBOUND.md    # Outbound calling API docs
@@ -231,7 +234,9 @@ See `.env.example` for all variables. Key ones:
 |----------|---------|
 | `EXTERNAL_IP` | Server LAN IP for RTP routing |
 | `CLAUDE_API_URL` | URL to claude-api-server |
-| `ELEVENLABS_API_KEY` | TTS API key |
+| `TTS_PROVIDER` | Active TTS provider (`elevenlabs` or `airforce`) |
+| `ELEVENLABS_API_KEY` | ElevenLabs TTS key |
+| `AIRFORCE_API_KEY` | Airforce TTS key |
 | `GROQ_API_KEY` | Whisper STT API key |
 | `SIP_DOMAIN` | 3CX server FQDN |
 | `SIP_REGISTRAR` | SIP registrar address |
