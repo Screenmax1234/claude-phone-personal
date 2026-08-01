@@ -345,13 +345,21 @@ async function runConversationLoop(endpoint, dialog, callUuid, options) {
       const thinkingUrl = await ttsService.generateSpeech(thinkingPhrase, voiceId);
       if (callActive) await endpoint.play(thinkingUrl);
 
-      // 2. Start hold music in background
+      // 2. Start hold music in background (loops until stopped)
       let musicPlaying = false;
       if (callActive) {
-        endpoint.play(HOLD_MUSIC_URL).catch(e => {
-          logger.warn('Hold music failed', { callUuid, error: e.message });
-        });
         musicPlaying = true;
+        const musicLoop = async () => {
+          while (musicPlaying && callActive) {
+            try {
+              await endpoint.play(HOLD_MUSIC_URL);
+            } catch (e) {
+              logger.warn('Hold music stopped', { callUuid, error: e.message });
+              break;
+            }
+          }
+        };
+        musicLoop();
       }
 
       // 3. Query Claude

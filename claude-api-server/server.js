@@ -118,9 +118,9 @@ console.log('[STARTUP] API keys loaded:', apiKeys.join(', '));
 // Session storage: callId -> claudeSessionId
 const sessions = new Map();
 
-// Model selection - only pass --model if explicitly set; otherwise let
-// Claude CLI use whatever default the user has configured (settings/.bashrc)
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || null;
+// Model selection - only pass --model if explicitly set; otherwise use 'sonnet'
+// alias which maps to ANTHROPIC_DEFAULT_SONNET_MODEL env var if configured
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'sonnet';
 
 function parseClaudeStdout(stdout) {
   // Claude Code CLI may output JSONL; when it does, extract the `result` message.
@@ -156,11 +156,8 @@ function runClaudeOnce({ fullPrompt, callId, timestamp }) {
   const args = [
     '--dangerously-skip-permissions',
     '-p', fullPrompt,
+    '--model', CLAUDE_MODEL
   ];
-
-  if (CLAUDE_MODEL) {
-    args.push('--model', CLAUDE_MODEL);
-  }
 
   if (callId) {
     if (sessions.has(callId)) {
@@ -278,7 +275,7 @@ app.post('/ask', async (req, res) => {
   const existingSession = callId ? sessions.get(callId) : null;
 
   console.log(`[${timestamp}] QUERY: "${prompt.substring(0, 100)}..."`);
-  console.log(`[${timestamp}] MODEL: ${CLAUDE_MODEL || '(cli default)'}`);
+  console.log(`[${timestamp}] MODEL: ${CLAUDE_MODEL}`);
   console.log(`[${timestamp}] SESSION: callId=${callId || 'none'}, existing=${existingSession || 'none'}`);
   console.log(`[${timestamp}] DEVICE PROMPT: ${devicePrompt ? 'Yes (' + devicePrompt.substring(0, 30) + '...)' : 'No'}`);
 
@@ -386,7 +383,7 @@ app.post('/ask-structured', async (req, res) => {
   });
 
   console.log(`[${timestamp}] STRUCTURED QUERY: "${String(prompt).substring(0, 100)}..."`);
-  console.log(`[${timestamp}] MODEL: ${CLAUDE_MODEL || '(cli default)'}`);
+  console.log(`[${timestamp}] MODEL: ${CLAUDE_MODEL}`);
   console.log(`[${timestamp}] SESSION: callId=${callId || 'none'}, existing=${callId ? (sessions.has(callId) ? 'yes' : 'no') : 'none'}`);
 
   try {

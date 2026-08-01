@@ -210,12 +210,20 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
       const thinkingUrl = await ttsService.generateSpeech(thinkingPhrase, voiceId);
       await endpoint.play(thinkingUrl);
 
-      // Hold music in background
+      // Hold music in background (loops until stopped)
       let musicPlaying = false;
-      endpoint.play(HOLD_MUSIC_URL).catch(function(e) {
-        console.log('[' + new Date().toISOString() + '] MUSIC: Hold music failed, continuing');
-      });
       musicPlaying = true;
+      const musicLoop = async () => {
+        while (musicPlaying) {
+          try {
+            await endpoint.play(HOLD_MUSIC_URL);
+          } catch (e) {
+            console.log('[' + new Date().toISOString() + '] MUSIC: Hold music stopped');
+            break;
+          }
+        }
+      };
+      musicLoop();
 
       // Query Claude with device-specific prompt
       console.log('[' + new Date().toISOString() + '] CLAUDE Querying (device: ' + deviceName + ')...');
