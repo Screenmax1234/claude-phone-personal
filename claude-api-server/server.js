@@ -94,9 +94,12 @@ function buildClaudeEnvironment() {
     IS_SANDBOX: '1',
   };
 
-  // CRITICAL: Remove ANTHROPIC_API_KEY so Claude CLI uses subscription auth
-  // If ANTHROPIC_API_KEY is set (even to placeholder), CLI tries API auth instead
-  delete env.ANTHROPIC_API_KEY;
+  // If a custom API endpoint is configured (e.g. ElectronHub gateway), keep the
+  // API key — the user is using API key auth, not subscription auth.
+  // Otherwise remove it so Claude CLI uses subscription auth.
+  if (!env.ANTHROPIC_BASE_URL) {
+    delete env.ANTHROPIC_API_KEY;
+  }
 
   return env;
 }
