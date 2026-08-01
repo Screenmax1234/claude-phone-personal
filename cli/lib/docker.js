@@ -219,6 +219,8 @@ export function generateEnvFile(config) {
     '',
     '# Claude API Server',
     `CLAUDE_API_URL=${claudeApiUrl}`,
+    '# Claude query timeout in seconds (gateway models may need 60+)',
+    `CLAUDE_TIMEOUT=${config.server?.claudeTimeout || 60}`,
     '',
     '# Text-to-Speech (provider selected by TTS_PROVIDER)',
     `TTS_PROVIDER=${(config.api.tts && config.api.tts.provider) || 'elevenlabs'}`,
