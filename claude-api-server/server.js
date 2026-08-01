@@ -90,6 +90,8 @@ function buildClaudeEnvironment() {
     // CRITICAL: These tell Claude Code it's running in the proper environment
     CLAUDECODE: '1',
     CLAUDE_CODE_ENTRYPOINT: 'cli',
+    // CRITICAL: Allow --dangerously-skip-permissions when running as root (Docker/VM)
+    IS_SANDBOX: '1',
   };
 
   // CRITICAL: Remove ANTHROPIC_API_KEY so Claude CLI uses subscription auth
