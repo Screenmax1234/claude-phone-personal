@@ -113,6 +113,8 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
 
   let session = null;
   let forkRunning = false;
+  let callActive = true;
+  let musicPlaying = false;
 
   // Get device-specific settings
   const deviceName = deviceConfig ? deviceConfig.name : 'Morpheus';
@@ -122,12 +124,28 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
     ? "Hello! I'm " + deviceConfig.name + ". How can I help you today?"
     : "Hello! I'm your server. How can I help you today?";
 
+  // Track call end so we stop all operations on the dead endpoint
+  const onDialogDestroy = function() {
+    callActive = false;
+    musicPlaying = false;
+    console.log('[' + new Date().toISOString() + '] CALL Ended (dialog destroyed)');
+    if (endpoint) endpoint.destroy().catch(function() {});
+  };
+  dialog.on('destroy', onDialogDestroy);
+
   try {
     console.log('[' + new Date().toISOString() + '] CONVERSATION Starting (session: ' + callUuid + ', device: ' + deviceName + ', voice: ' + voiceId + ')...');
 
     // Play device-specific greeting with device voice
-    const greetingUrl = await ttsService.generateSpeech(greeting, voiceId);
-    await endpoint.play(greetingUrl);
+    if (callActive) {
+      const greetingUrl = await ttsService.generateSpeech(greeting, voiceId);
+      if (callActive) await endpoint.play(greetingUrl);
+    }
+
+    if (!callActive) {
+      console.log('[' + new Date().toISOString() + '] CONVERSATION Call ended before audio started');
+      return;
+    }
 
     // Start fork for entire call
     const wsUrl = 'ws://127.0.0.1:' + wsPort + '/' + encodeURIComponent(callUuid);
@@ -147,16 +165,20 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
     let turnCount = 0;
     const MAX_TURNS = 20;
 
-    while (turnCount < MAX_TURNS) {
+    while (turnCount < MAX_TURNS && callActive) {
       turnCount++;
       console.log('[' + new Date().toISOString() + '] CONVERSATION Turn ' + turnCount + '/' + MAX_TURNS);
 
       // READY BEEP
-      try {
-        await endpoint.play(READY_BEEP_URL);
-      } catch (e) {
-        console.log('[' + new Date().toISOString() + '] BEEP: Ready beep failed, continuing');
+      if (callActive) {
+        try {
+          await endpoint.play(READY_BEEP_URL);
+        } catch (e) {
+          console.log('[' + new Date().toISOString() + '] BEEP: Ready beep failed, continuing');
+        }
       }
+
+      if (!callActive) break;
 
       session.setCaptureEnabled(true);
       console.log('[' + new Date().toISOString() + '] LISTEN Waiting for speech...');
@@ -169,19 +191,25 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
         console.log('[' + new Date().toISOString() + '] LISTEN Timeout: ' + err.message);
       }
 
+      if (!callActive) break;
+
       session.setCaptureEnabled(false);
 
       if (!utterance) {
-        const promptUrl = await ttsService.generateSpeech("I didn't hear anything. Are you still there?", voiceId);
-        await endpoint.play(promptUrl);
+        if (callActive) {
+          const promptUrl = await ttsService.generateSpeech("I didn't hear anything. Are you still there?", voiceId);
+          if (callActive) await endpoint.play(promptUrl);
+        }
         continue;
       }
 
       // GOT-IT BEEP
-      try {
-        await endpoint.play(GOTIT_BEEP_URL);
-      } catch (e) {
-        console.log('[' + new Date().toISOString() + '] BEEP: Got-it beep failed, continuing');
+      if (callActive) {
+        try {
+          await endpoint.play(GOTIT_BEEP_URL);
+        } catch (e) {
+          console.log('[' + new Date().toISOString() + '] BEEP: Got-it beep failed, continuing');
+        }
       }
 
       // Transcribe
@@ -192,29 +220,38 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
 
       console.log('[' + new Date().toISOString() + '] WHISPER: "' + transcript + '"');
 
+      if (!callActive) break;
+
       if (!transcript || transcript.trim().length < 2) {
-        const clarifyUrl = await ttsService.generateSpeech("Sorry, I didn't catch that. Could you repeat?", voiceId);
-        await endpoint.play(clarifyUrl);
+        if (callActive) {
+          const clarifyUrl = await ttsService.generateSpeech("Sorry, I didn't catch that. Could you repeat?", voiceId);
+          if (callActive) await endpoint.play(clarifyUrl);
+        }
         continue;
       }
 
       if (isGoodbye(transcript)) {
-        const byeUrl = await ttsService.generateSpeech("Goodbye! Call again anytime.", voiceId);
-        await endpoint.play(byeUrl);
+        if (callActive) {
+          const byeUrl = await ttsService.generateSpeech("Goodbye! Call again anytime.", voiceId);
+          if (callActive) await endpoint.play(byeUrl);
+        }
         break;
       }
 
       // THINKING FEEDBACK
       const thinkingPhrase = getRandomThinkingPhrase();
       console.log('[' + new Date().toISOString() + '] THINKING: "' + thinkingPhrase + '"');
-      const thinkingUrl = await ttsService.generateSpeech(thinkingPhrase, voiceId);
-      await endpoint.play(thinkingUrl);
+      if (callActive) {
+        const thinkingUrl = await ttsService.generateSpeech(thinkingPhrase, voiceId);
+        if (callActive) await endpoint.play(thinkingUrl);
+      }
+
+      if (!callActive) break;
 
       // Hold music in background (loops until stopped)
-      let musicPlaying = false;
       musicPlaying = true;
       const musicLoop = async () => {
-        while (musicPlaying) {
+        while (musicPlaying && callActive) {
           try {
             await endpoint.play(HOLD_MUSIC_URL);
           } catch (e) {
@@ -233,10 +270,17 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
       );
 
       // Stop hold music
-      if (musicPlaying) {
+      musicPlaying = false;
+      if (callActive) {
         try {
           await endpoint.api('uuid_break', endpoint.uuid);
         } catch (e) {}
+      }
+
+      // Check if call ended during Claude processing
+      if (!callActive) {
+        console.log('[' + new Date().toISOString() + '] CLAUDE Response received but call ended');
+        break;
       }
 
       console.log('[' + new Date().toISOString() + '] CLAUDE Response received');
@@ -246,25 +290,31 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
       console.log('[' + new Date().toISOString() + '] VOICE: "' + voiceLine + '"');
 
       const responseUrl = await ttsService.generateSpeech(voiceLine, voiceId);
-      await endpoint.play(responseUrl);
+      if (callActive) await endpoint.play(responseUrl);
 
       console.log('[' + new Date().toISOString() + '] CONVERSATION Turn ' + turnCount + ' complete');
     }
 
-    if (turnCount >= MAX_TURNS) {
+    if (turnCount >= MAX_TURNS && callActive) {
       const maxUrl = await ttsService.generateSpeech("We've been talking for a while. Goodbye!", voiceId);
-      await endpoint.play(maxUrl);
+      if (callActive) await endpoint.play(maxUrl);
     }
 
   } catch (error) {
     console.error('[' + new Date().toISOString() + '] CONVERSATION Error:', error.message);
     try {
       if (session) session.setCaptureEnabled(false);
-      const errUrl = await ttsService.generateSpeech("Sorry, something went wrong.", voiceId);
-      await endpoint.play(errUrl);
+      if (callActive) {
+        const errUrl = await ttsService.generateSpeech("Sorry, something went wrong.", voiceId);
+        if (callActive) await endpoint.play(errUrl);
+      }
     } catch (e) {}
   } finally {
+    musicPlaying = false;
     console.log('[' + new Date().toISOString() + '] CONVERSATION Cleanup...');
+
+    // Remove our destroy listener
+    dialog.off('destroy', onDialogDestroy);
 
     try {
       await claudeBridge.endSession(callUuid);
@@ -276,7 +326,11 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
       } catch (e) {}
     }
 
-    try { dialog.destroy(); } catch (e) {}
+    // Only destroy the dialog if the caller hasn't already hung up
+    // (calling destroy on an already-destroyed dialog throws "unable to find dialog")
+    if (callActive) {
+      try { dialog.destroy(); } catch (e) {}
+    }
   }
 }
 
@@ -351,10 +405,7 @@ async function handleInvite(req, res, options) {
 
     console.log('[' + new Date().toISOString() + '] CALL Connected: ' + callUuid);
 
-    dialog.on('destroy', function() {
-      console.log('[' + new Date().toISOString() + '] CALL Ended');
-      if (endpoint) endpoint.destroy().catch(function() {});
-    });
+    // conversationLoop registers its own dialog 'destroy' handler for cleanup
 
     await conversationLoop(endpoint, dialog, callUuid, options, deviceConfig);
     return { endpoint: endpoint, dialog: dialog, callerId: callerId, callUuid: callUuid };
