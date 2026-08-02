@@ -14,7 +14,11 @@ const os = require("os");
 const path = require("path");
 
 const GROQ_BASE_URL = process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
-const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3-turbo";
+// whisper-large-v3 is far better than -turbo for non-English (Greek etc.)
+const GROQ_MODEL = process.env.GROQ_MODEL || "whisper-large-v3";
+// Language for STT. Set WHISPER_LANGUAGE=el to force Greek, or leave unset
+// for auto-detection (Whisper detects the spoken language automatically).
+const WHISPER_LANGUAGE = process.env.WHISPER_LANGUAGE || null;
 
 // Lazy-initialized Groq client (uses the openai SDK pointed at Groq's endpoint)
 let groq = null;
@@ -57,15 +61,18 @@ function pcmToWav(pcmBuffer, sampleRate = 8000) {
  * @param {Object} options - Transcription options
  * @param {string} options.format - Input format: "wav" or "pcm" (default: "pcm")
  * @param {number} options.sampleRate - Sample rate for PCM (default: 8000)
- * @param {string} options.language - Language code (default: "en")
+ * @param {string} options.language - Language code (e.g. "el" for Greek); omit for auto-detect
  * @returns {Promise<string>} Transcribed text
  */
 async function transcribe(audioBuffer, options = {}) {
   const {
     format = "pcm",
     sampleRate = 8000,
-    language = "en"
+    language
   } = options;
+
+  // Resolve language: explicit arg > env var > auto-detect (omit field)
+  const effectiveLang = language || WHISPER_LANGUAGE;
 
   const client = getGroqClient();
   if (!client) {
@@ -85,12 +92,18 @@ async function transcribe(audioBuffer, options = {}) {
   fs.writeFileSync(tempFile, wavBuffer);
 
   try {
-    const transcription = await client.audio.transcriptions.create({
+    const reqOpts = {
       file: fs.createReadStream(tempFile),
       model: GROQ_MODEL,
-      language: language,
       response_format: "text"
-    });
+    };
+    // Only pass language if explicitly set — omitting it lets Whisper
+    // auto-detect, which handles mixed English/Greek callers well.
+    if (effectiveLang) {
+      reqOpts.language = effectiveLang;
+    }
+
+    const transcription = await client.audio.transcriptions.create(reqOpts);
 
     const timestamp = new Date().toISOString();
     console.log("[" + timestamp + "] WHISPER Transcribed: " + transcription.substring(0, 100) + (transcription.length > 100 ? "..." : ""));

@@ -89,7 +89,7 @@ function loadFresh(env) {
 // --- Tests -----------------------------------------------------------------
 
 test('whisper-client (Groq)', async (t) => {
-  await t.test('uses Groq endpoint and default turbo model', async (t) => {
+  await t.test('uses Groq endpoint and default multilingual model', async (t) => {
     const { mod: whisper, restore } = loadFresh({ GROQ_API_KEY: 'gsk_test_key' });
     t.after(restore);
 
@@ -100,20 +100,22 @@ test('whisper-client (Groq)', async (t) => {
     assert.strictEqual(recorded.ctor[0].apiKey, 'gsk_test_key');
     assert.strictEqual(recorded.ctor[0].baseURL, 'https://api.groq.com/openai/v1');
     assert.strictEqual(recorded.create.length, 1);
-    assert.strictEqual(recorded.create[0].model, 'whisper-large-v3-turbo');
+    assert.strictEqual(recorded.create[0].model, 'whisper-large-v3');
     assert.strictEqual(recorded.create[0].response_format, 'text');
+    // No language field by default = auto-detect
+    assert.strictEqual(recorded.create[0].language, undefined);
   });
 
   await t.test('honors GROQ_MODEL override', async (t) => {
     const { mod: whisper, restore } = loadFresh({
       GROQ_API_KEY: 'gsk_test_key',
-      GROQ_MODEL: 'whisper-large-v3'
+      GROQ_MODEL: 'whisper-large-v3-turbo'
     });
     t.after(restore);
 
     await whisper.transcribe(Buffer.from('audio'), { format: 'wav' });
 
-    assert.strictEqual(recorded.create[0].model, 'whisper-large-v3');
+    assert.strictEqual(recorded.create[0].model, 'whisper-large-v3-turbo');
   });
 
   await t.test('honors GROQ_BASE_URL override', async (t) => {
