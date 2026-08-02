@@ -47,7 +47,7 @@ The Discord bot runs as a Docker container alongside voice-app.
 ## Usage
 
 - **DM the bot** — just send a message
-- **In a server** — mention the bot (@Marilyn what's the weather?) or reply to one of its messages
+- **In a server** — mention the bot (@Valori what's the weather?) or reply to one of its messages
 - **Conversations** — each channel maintains its own context, so you can have separate conversations in different channels
 
 ## Remote API Access

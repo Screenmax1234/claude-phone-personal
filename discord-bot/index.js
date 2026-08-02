@@ -31,7 +31,7 @@ const ALLOWED_USERS = process.env.DISCORD_ALLOWED_USERS
   ? process.env.DISCORD_ALLOWED_USERS.split(',').map(s => s.trim()).filter(Boolean)
   : [];
 
-// Default personality — matches Marilyn if she's configured
+// Default personality — matches Valori if she's configured
 const DEFAULT_SYSTEM_PROMPT = process.env.DISCORD_SYSTEM_PROMPT ||
   'You are a helpful AI assistant accessible via Discord. You can answer questions, ' +
   'help with coding tasks, research topics, and assist with IT/DevOps work. ' +

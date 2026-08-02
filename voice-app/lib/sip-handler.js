@@ -5,6 +5,11 @@
 
 const { setTimeout: sleep } = require('node:timers/promises');
 
+const ttsService = require('./tts-service');
+const claudeBridge = require('./claude-bridge');
+const fastLlm = require('./fast-llm');
+const router = require('./router');
+
 // Audio cue URLs
 const READY_BEEP_URL = 'http://127.0.0.1:3000/static/ready-beep.wav';
 const GOTIT_BEEP_URL = 'http://127.0.0.1:3000/static/gotit-beep.wav';
@@ -248,45 +253,71 @@ async function conversationLoop(endpoint, dialog, callUuid, options, deviceConfi
 
       if (!callActive) break;
 
-      // Hold music in background (loops until stopped)
-      musicPlaying = true;
-      const musicLoop = async () => {
-        while (musicPlaying && callActive) {
-          try {
-            await endpoint.play(HOLD_MUSIC_URL);
-          } catch (e) {
-            console.log('[' + new Date().toISOString() + '] MUSIC: Hold music stopped');
-            break;
-          }
-        }
-      };
-      musicLoop();
+      // Route query: fast path (Cerebras/Groq) vs slow path (Claude Code)
+      const route = router.classify(transcript);
+      const fastAvailable = fastLlm.isAvailable();
+      let voiceLine;
 
-      // Query Claude with device-specific prompt
-      console.log('[' + new Date().toISOString() + '] CLAUDE Querying (device: ' + deviceName + ')...');
-      const claudeResponse = await claudeBridge.query(
-        transcript,
-        { callId: callUuid, devicePrompt: devicePrompt }
-      );
-
-      // Stop hold music
-      musicPlaying = false;
-      if (callActive) {
+      if (route.path === 'fast' && fastAvailable) {
+        // ===== FAST PATH (no hold music — should be ~1-2s) =====
+        console.log('[' + new Date().toISOString() + '] FAST_LLM Routing (' + route.reason + '): "' + transcript.substring(0, 60) + '"');
         try {
-          await endpoint.api('uuid_break', endpoint.uuid);
-        } catch (e) {}
+          const fastSystem = devicePrompt
+            ? devicePrompt + '\n\nKeep your answer conversational and under 40 words. This will be spoken aloud. No URLs, no code blocks.'
+            : 'You are a helpful voice assistant. Be concise, under 40 words. No URLs or code.';
+          const result = await fastLlm.query(transcript, { systemPrompt: fastSystem });
+          voiceLine = result.response;
+          console.log('[' + new Date().toISOString() + '] FAST_LLM Response (' + result.provider + '): "' + voiceLine.substring(0, 80) + '"');
+        } catch (fastErr) {
+          // Fast path failed — fall through to slow path
+          console.warn('[' + new Date().toISOString() + '] FAST_LLM Failed (' + fastErr.message + '), falling back to Claude');
+          voiceLine = null;
+        }
+      } else if (route.path === 'fast' && !fastAvailable) {
+        console.log('[' + new Date().toISOString() + '] ROUTER fast but FAST_LLM not configured, using Claude');
+        voiceLine = null;
       }
 
-      // Check if call ended during Claude processing
-      if (!callActive) {
-        console.log('[' + new Date().toISOString() + '] CLAUDE Response received but call ended');
-        break;
+      if (!voiceLine) {
+        // ===== SLOW PATH (Claude Code with tools) =====
+        // Hold music in background (loops until stopped)
+        musicPlaying = true;
+        const musicLoop = async () => {
+          while (musicPlaying && callActive) {
+            try {
+              await endpoint.play(HOLD_MUSIC_URL);
+            } catch (e) {
+              console.log('[' + new Date().toISOString() + '] MUSIC: Hold music stopped');
+              break;
+            }
+          }
+        };
+        musicLoop();
+
+        console.log('[' + new Date().toISOString() + '] CLAUDE Querying (device: ' + deviceName + ')...');
+        const claudeResponse = await claudeBridge.query(
+          transcript,
+          { callId: callUuid, devicePrompt: devicePrompt }
+        );
+
+        // Stop hold music
+        musicPlaying = false;
+        if (callActive) {
+          try {
+            await endpoint.api('uuid_break', endpoint.uuid);
+          } catch (e) {}
+        }
+
+        // Check if call ended during Claude processing
+        if (!callActive) {
+          console.log('[' + new Date().toISOString() + '] CLAUDE Response received but call ended');
+          break;
+        }
+
+        console.log('[' + new Date().toISOString() + '] CLAUDE Response received');
+        voiceLine = extractVoiceLine(claudeResponse);
       }
 
-      console.log('[' + new Date().toISOString() + '] CLAUDE Response received');
-
-      // Extract and play voice line with device voice
-      const voiceLine = extractVoiceLine(claudeResponse);
       console.log('[' + new Date().toISOString() + '] VOICE: "' + voiceLine + '"');
 
       const responseUrl = await ttsService.generateSpeech(voiceLine, voiceId);

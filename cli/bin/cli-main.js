@@ -18,6 +18,7 @@ import { backupCommand } from '../lib/commands/backup.js';
 import { restoreCommand } from '../lib/commands/restore.js';
 import { uninstallCommand } from '../lib/commands/uninstall.js';
 import { discordCommand } from '../lib/commands/discord.js';
+import { fastModeCommand } from '../lib/commands/fast-mode.js';
 
 const program = new Command();
 
@@ -256,6 +257,19 @@ program
       await discordCommand(options);
     } catch (error) {
       console.error(chalk.red(`\n✗ Discord setup failed: ${error.message}\n`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('fast-mode')
+  .description('Configure fast LLM (Cerebras/Groq) for instant responses')
+  .option('--disable', 'Disable fast mode')
+  .action(async (options) => {
+    try {
+      await fastModeCommand(options);
+    } catch (error) {
+      console.error(chalk.red(`\n✗ Fast mode setup failed: ${error.message}\n`));
       process.exit(1);
     }
   });

@@ -282,6 +282,19 @@ export function generateEnvFile(config) {
     '',
     '# Remote API Access (optional — set to enable auth on port 3333)',
     `API_KEY=${config.discord?.apiKey || config.secrets?.apiKey || ''}`,
+    '',
+    '# Fast LLM (optional — quick responses without Claude Code tools)',
+    '# Primary (Cerebras recommended for max speed)',
+    `FAST_LLM_PROVIDER=${config.fastLlm?.provider || ''}`,
+    `FAST_LLM_BASE_URL=${config.fastLlm?.baseUrl || ''}`,
+    `FAST_LLM_API_KEY=${config.fastLlm?.apiKey || ''}`,
+    `FAST_LLM_MODEL=${config.fastLlm?.model || ''}`,
+    '# Fallback (Groq — used if Cerebras errors/rate-limits)',
+    `FAST_LLM_FALLBACK_PROVIDER=${config.fastLlm?.fallbackProvider || ''}`,
+    `FAST_LLM_FALLBACK_BASE_URL=${config.fastLlm?.fallbackBaseUrl || ''}`,
+    `FAST_LLM_FALLBACK_API_KEY=${config.fastLlm?.fallbackApiKey || ''}`,
+    `FAST_LLM_FALLBACK_MODEL=${config.fastLlm?.fallbackModel || ''}`,
+    `FAST_LLM_TIMEOUT=${config.fastLlm?.timeout || 5}`,
     ''
   ];
 
