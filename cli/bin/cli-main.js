@@ -17,6 +17,7 @@ import { updateCommand } from '../lib/commands/update.js';
 import { backupCommand } from '../lib/commands/backup.js';
 import { restoreCommand } from '../lib/commands/restore.js';
 import { uninstallCommand } from '../lib/commands/uninstall.js';
+import { discordCommand } from '../lib/commands/discord.js';
 
 const program = new Command();
 
@@ -242,6 +243,19 @@ program
       await uninstallCommand();
     } catch (error) {
       console.error(chalk.red(`\n✗ Uninstall failed: ${error.message}\n`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('discord')
+  .description('Configure Discord bot integration')
+  .option('--disable', 'Disable Discord bot')
+  .action(async (options) => {
+    try {
+      await discordCommand(options);
+    } catch (error) {
+      console.error(chalk.red(`\n✗ Discord setup failed: ${error.message}\n`));
       process.exit(1);
     }
   });

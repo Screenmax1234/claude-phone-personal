@@ -230,10 +230,30 @@ Example response:
 // Middleware
 app.use(express.json());
 
+// API key auth — protects remote access while allowing localhost (voice-app)
+// If API_KEY is set, requests must come from localhost OR carry the key.
+const API_KEY = process.env.API_KEY || null;
+
+app.use((req, res, next) => {
+  if (!API_KEY) return next(); // No key configured = open (backward compat)
+
+  const isLocal = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+  if (isLocal) return next(); // voice-app hits localhost
+
+  const authHeader = req.headers['authorization'] || '';
+  const xKey = req.headers['x-api-key'] || '';
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  const providedKey = bearerMatch ? bearerMatch[1] : xKey;
+
+  if (providedKey === API_KEY) return next();
+
+  return res.status(401).json({ success: false, error: 'Unauthorized: invalid or missing API key' });
+});
+
 // Request logging
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] ${req.method} ${req.path}`);
+  console.log(`[${timestamp}] ${req.method} ${req.path} from ${req.ip}`);
   next();
 });
 
@@ -487,6 +507,67 @@ app.post('/end-session', (req, res) => {
 });
 
 /**
+ * POST /chat
+ *
+ * Lightweight text chat endpoint — no VOICE_CONTEXT layering.
+ * Perfect for Discord bots, web UIs, and API clients.
+ *
+ * Request body:
+ *   {
+ *     "prompt": "Write a Python script to check Docker container status",
+ *     "callId": "optional-session-id for multi-turn context",
+ *     "systemPrompt": "optional system prompt (personality/instructions)"
+ *   }
+ *
+ * Response:
+ *   { "success": true, "response": "...", "duration_ms": 1234 }
+ */
+app.post('/chat', async (req, res) => {
+  const { prompt, callId, systemPrompt } = req.body;
+  const startTime = Date.now();
+  const timestamp = new Date().toISOString();
+
+  if (!prompt) {
+    return res.status(400).json({ success: false, error: 'Missing prompt' });
+  }
+
+  let fullPrompt = '';
+  if (systemPrompt) {
+    fullPrompt += `[SYSTEM]\n${systemPrompt}\n[END SYSTEM]\n\n`;
+  }
+  fullPrompt += prompt;
+
+  console.log(`[${timestamp}] CHAT: "${prompt.substring(0, 100)}..."`);
+
+  try {
+    const { code, stdout, stderr, duration_ms } = await runClaudeOnce({
+      fullPrompt,
+      callId,
+      timestamp,
+    });
+
+    if (code !== 0) {
+      const errorMsg = stderr || stdout || `Exit code ${code}`;
+      return res.json({ success: false, error: `Claude CLI failed: ${errorMsg}`, duration_ms });
+    }
+
+    const { response, sessionId } = parseClaudeStdout(stdout);
+
+    if (sessionId && callId) {
+      sessions.set(callId, sessionId);
+    }
+
+    console.log(`[${new Date().toISOString()}] CHAT RESPONSE (${duration_ms}ms): "${response.substring(0, 100)}..."`);
+
+    res.json({ success: true, response, sessionId, duration_ms });
+  } catch (error) {
+    const duration_ms = Date.now() - startTime;
+    console.error(`[${timestamp}] CHAT ERROR:`, error.message);
+    res.json({ success: false, error: error.message, duration_ms });
+  }
+});
+
+/**
  * GET /health
  * Health check endpoint
  */
@@ -507,7 +588,8 @@ app.get('/', (req, res) => {
     service: 'Claude HTTP API Server',
     version: '1.0.0',
     endpoints: {
-      'POST /ask': 'Send a prompt to Claude',
+      'POST /ask': 'Send a prompt to Claude (voice context)',
+      'POST /chat': 'Send a prompt to Claude (plain text, no voice context)',
       'POST /ask-structured': 'Send a prompt and return validated JSON (n8n)',
       'GET /health': 'Health check'
     }

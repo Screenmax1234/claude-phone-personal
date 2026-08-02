@@ -81,6 +81,25 @@ export async function checkDocker() {
 }
 
 /**
+ * Generate Discord bot section for docker-compose (only if token configured)
+ * @param {object} config - Configuration object
+ * @returns {string} Docker compose service section
+ */
+function generateDiscordComposeSection(config) {
+  const discordBotPath = config.paths.discordBot ||
+    config.paths.voiceApp.replace(/voice-app$/, 'discord-bot');
+  return `
+  discord-bot:
+    build: ${discordBotPath}
+    container_name: discord-bot
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - ${getEnvPath()}
+`;
+}
+
+/**
  * Generate docker-compose.yml from config
  * @param {object} config - Configuration object
  * @returns {string} Docker compose YAML content
@@ -152,7 +171,7 @@ services:
       - ${config.paths.voiceApp}/config:/app/config
     depends_on:
       - drachtio
-      - freeswitch
+      - freeswitch${config.discord?.botToken ? generateDiscordComposeSection(config) : ''}
 `;
 }
 
@@ -254,6 +273,15 @@ export function generateEnvFile(config) {
     '# Outbound Call Settings',
     'MAX_CONVERSATION_TURNS=10',
     'OUTBOUND_RING_TIMEOUT=30',
+    '',
+    '# Discord Bot (optional — only runs if token is set)',
+    `DISCORD_BOT_TOKEN=${config.discord?.botToken || ''}`,
+    `DISCORD_ALLOWED_CHANNELS=${config.discord?.allowedChannels || ''}`,
+    `DISCORD_ALLOWED_USERS=${config.discord?.allowedUsers || ''}`,
+    `DISCORD_SYSTEM_PROMPT=${config.discord?.systemPrompt || ''}`,
+    '',
+    '# Remote API Access (optional — set to enable auth on port 3333)',
+    `API_KEY=${config.discord?.apiKey || config.secrets?.apiKey || ''}`,
     ''
   ];
 

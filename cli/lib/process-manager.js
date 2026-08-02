@@ -57,11 +57,18 @@ export async function isServerRunning(pidPath = null) {
  * Start the claude-api-server
  * @param {string} serverPath - Path to claude-api-server directory
  * @param {number} port - Port to listen on
- * @param {string} [pidPath] - Optional PID file path (for testing)
+ * @param {object} [opts] - Optional settings
+ * @param {string} [opts.pidPath] - Optional PID file path (for testing)
+ * @param {object} [opts.env] - Extra environment variables to pass
  * @returns {Promise<number>} Process PID
  */
-export async function startServer(serverPath, port, pidPath = null) {
-  pidPath = pidPath || getPidPath();
+export async function startServer(serverPath, port, opts = {}) {
+  // Backward compat: third arg can be a pidPath string or an opts object
+  if (typeof opts === 'string') {
+    opts = { pidPath: opts };
+  }
+  const pidPath = opts.pidPath || getPidPath();
+  const extraEnv = opts.env || {};
 
   // Check if already running
   if (await isServerRunning(pidPath)) {
@@ -77,7 +84,8 @@ export async function startServer(serverPath, port, pidPath = null) {
       stdio: 'ignore',
       env: {
         ...process.env,
-        PORT: port
+        PORT: port,
+        ...extraEnv
       }
     });
 

@@ -87,12 +87,14 @@ async function startApiServer(config) {
   // Start claude-api-server
   const spinner = ora('Starting Claude API server...').start();
   try {
-    if (await isServerRunning()) {
-      spinner.warn('Claude API server already running');
-    } else {
-      await startServer(config.paths.claudeApiServer, config.server.claudeApiPort);
-      spinner.succeed(`Claude API server started on port ${config.server.claudeApiPort}`);
-    }
+      if (await isServerRunning()) {
+        spinner.warn('Claude API server already running');
+      } else {
+        await startServer(config.paths.claudeApiServer, config.server.claudeApiPort, {
+          env: config.discord?.apiKey ? { API_KEY: config.discord.apiKey } : {}
+        });
+        spinner.succeed(`Claude API server started on port ${config.server.claudeApiPort}`);
+      }
   } catch (error) {
     spinner.fail(`Failed to start server: ${error.message}`);
     throw error;
@@ -319,7 +321,9 @@ async function startBoth(config, isPiMode) {
       if (await isServerRunning()) {
         spinner.warn('Claude API server already running');
       } else {
-        await startServer(config.paths.claudeApiServer, config.server.claudeApiPort);
+        await startServer(config.paths.claudeApiServer, config.server.claudeApiPort, {
+          env: config.discord?.apiKey ? { API_KEY: config.discord.apiKey } : {}
+        });
         spinner.succeed(`Claude API server started on port ${config.server.claudeApiPort}`);
       }
     } catch (error) {
