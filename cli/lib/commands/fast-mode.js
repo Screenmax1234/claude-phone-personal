@@ -98,7 +98,7 @@ export async function fastModeCommand(options = {}) {
       name: 'model',
       message: 'Primary model:',
       default: (a) => {
-        if (a.provider === 'groq') return 'gpt-oss-120b';
+        if (a.provider === 'groq') return 'openai/gpt-oss-120b';
         if (a.provider === 'electronhub') return 'llama-3.3-70b-versatile';
         return '';
       }
@@ -132,7 +132,7 @@ export async function fastModeCommand(options = {}) {
       type: 'input',
       name: 'fallbackModel',
       message: 'Fallback model:',
-      default: (a) => a.fallbackProvider === 'groq' ? 'gpt-oss-120b' : 'llama-3.3-70b-versatile',
+      default: (a) => a.fallbackProvider === 'groq' ? 'openai/gpt-oss-120b' : 'llama-3.3-70b-versatile',
       when: (a) => a.setupFallback && a.fallbackProvider !== 'none'
     }
   ]);

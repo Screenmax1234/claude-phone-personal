@@ -41,7 +41,7 @@ const PRIMARY = (() => {
     provider: 'groq',
     baseUrl: 'https://api.groq.com/openai/v1',
     apiKey: process.env.FAST_LLM_API_KEY,
-    model: process.env.FAST_LLM_MODEL || 'gpt-oss-120b',
+    model: process.env.FAST_LLM_MODEL || 'openai/gpt-oss-120b',
   };
 })();
 
