@@ -55,8 +55,7 @@ export async function fastModeCommand(options = {}) {
   }
 
   console.log(chalk.cyan('Get API keys:'));
-  console.log(chalk.gray('  Cerebras (free, 1800 tok/s): https://console.cerebras.ai'));
-  console.log(chalk.gray('  Groq (free, ~500 tok/s):     https://console.groq.com\n'));
+  console.log(chalk.gray('  Groq (free, ~500 tok/s): https://console.groq.com\n'));
 
   const answers = await inquirer.prompt([
     {
@@ -64,12 +63,11 @@ export async function fastModeCommand(options = {}) {
       name: 'provider',
       message: 'Primary fast LLM provider:',
       choices: [
-        { name: 'Cerebras (fastest — 1800 tok/s)', value: 'cerebras' },
-        { name: 'Groq (fast — ~500 tok/s)', value: 'groq' },
+        { name: 'Groq (recommended — free, ~500 tok/s)', value: 'groq' },
         { name: 'ElectronHub gateway', value: 'electronhub' },
         { name: 'OpenAI-compatible (custom)', value: 'custom' },
       ],
-      default: config.fastLlm?.provider || 'cerebras'
+      default: config.fastLlm?.provider || 'groq'
     },
     {
       type: 'password',
@@ -83,8 +81,7 @@ export async function fastModeCommand(options = {}) {
       type: 'input',
       name: 'baseUrl',
       message: 'Primary base URL:',
-      default: (a) => a.provider === 'cerebras' ? 'https://api.cerebras.ai/v1'
-        : a.provider === 'groq' ? 'https://api.groq.com/openai/v1'
+      default: (a) => a.provider === 'groq' ? 'https://api.groq.com/openai/v1'
         : a.provider === 'electronhub' ? 'https://api.electronhub.ai/v1'
         : '',
       when: (a) => a.provider === 'custom'
@@ -101,7 +98,7 @@ export async function fastModeCommand(options = {}) {
       name: 'model',
       message: 'Primary model:',
       default: (a) => {
-        if (a.provider === 'cerebras' || a.provider === 'groq') return 'gpt-oss-120b';
+        if (a.provider === 'groq') return 'gpt-oss-120b';
         if (a.provider === 'electronhub') return 'llama-3.3-70b-versatile';
         return '';
       }
@@ -117,12 +114,11 @@ export async function fastModeCommand(options = {}) {
       name: 'fallbackProvider',
       message: 'Fallback provider (used if primary fails):',
       choices: [
-        { name: 'Groq', value: 'groq' },
-        { name: 'Cerebras', value: 'cerebras' },
         { name: 'ElectronHub gateway', value: 'electronhub' },
+        { name: 'Groq', value: 'groq' },
         { name: 'None / skip', value: 'none' },
       ],
-      default: 'groq',
+      default: 'electronhub',
       when: (a) => a.setupFallback
     },
     {
@@ -136,14 +132,13 @@ export async function fastModeCommand(options = {}) {
       type: 'input',
       name: 'fallbackModel',
       message: 'Fallback model:',
-      default: (a) => (a.fallbackProvider === 'cerebras' || a.fallbackProvider === 'groq') ? 'gpt-oss-120b' : '',
+      default: (a) => a.fallbackProvider === 'groq' ? 'gpt-oss-120b' : 'llama-3.3-70b-versatile',
       when: (a) => a.setupFallback && a.fallbackProvider !== 'none'
     }
   ]);
 
   // Build config
   const baseUrlMap = {
-    cerebras: 'https://api.cerebras.ai/v1',
     groq: 'https://api.groq.com/openai/v1',
     electronhub: 'https://api.electronhub.ai/v1',
   };
@@ -167,8 +162,8 @@ export async function fastModeCommand(options = {}) {
 
   console.log(chalk.bold.green('\n✓ Fast mode configured!\n'));
   console.log(chalk.gray('How it works:'));
-  console.log(chalk.gray('  • Simple questions → ' + answers.provider + ' (instant)'));
-  console.log(chalk.gray('  • Complex tasks (docker, files, commands) → Claude Code'));
+  console.log(chalk.gray('  • Simple questions → ' + answers.provider + ' (instant, no hold music)'));
+  console.log(chalk.gray('  • Complex tasks (docker, files, commands) → Claude Code (with tools)'));
   if (config.fastLlm.fallbackProvider) {
     console.log(chalk.gray('  • If ' + answers.provider + ' fails → ' + config.fastLlm.fallbackProvider + ' fallback'));
   }

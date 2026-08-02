@@ -36,10 +36,10 @@ function loadProvider(prefix) {
 const PRIMARY = (() => {
   const p = loadProvider('FAST_LLM');
   if (p) return p;
-  // Sensible defaults
+  // Default: Groq (gpt-oss-120b — best quality at ~500 tok/s)
   return {
-    provider: 'cerebras',
-    baseUrl: 'https://api.cerebras.ai/v1',
+    provider: 'groq',
+    baseUrl: 'https://api.groq.com/openai/v1',
     apiKey: process.env.FAST_LLM_API_KEY,
     model: process.env.FAST_LLM_MODEL || 'gpt-oss-120b',
   };
